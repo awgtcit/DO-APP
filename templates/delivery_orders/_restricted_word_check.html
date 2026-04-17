@@ -1,0 +1,38 @@
+<script>
+/* Real-time restricted word check on text fields */
+(function() {
+  const fields = document.querySelectorAll('input[name="payment_terms"], input[name="point_of_discharge"], input[name="final_destination"], input[name="notify_party"], input[name="shipping_agent"]');
+  let timer = null;
+
+  fields.forEach(input => {
+    const warn = document.createElement('div');
+    warn.style.cssText = 'color:var(--red-600);font-size:var(--text-xs);margin-top:2px;display:none;';
+    input.parentNode.appendChild(warn);
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const val = input.value.trim();
+        if (!val) { warn.style.display = 'none'; input.style.borderColor = ''; return; }
+        fetch('{{ url_for("admin_settings.api_check_words") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({text: val})
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.blocked && data.blocked.length) {
+            warn.textContent = '\u26a0 Blocked word(s): ' + data.blocked.join(', ');
+            warn.style.display = 'block';
+            input.style.borderColor = 'var(--red-500)';
+          } else {
+            warn.style.display = 'none';
+            input.style.borderColor = '';
+          }
+        })
+        .catch(() => {});
+      }, 400);
+    });
+  });
+})();
+</script>

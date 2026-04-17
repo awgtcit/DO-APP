@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ ann.AnnouncementSubject }} — Announcement{% endblock %}
+
+{% block head %}
+<style>
+.ann-hero {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-8);
+  margin-bottom: var(--sp-6);
+}
+.ann-hero__meta {
+  display: flex;
+  gap: var(--sp-3);
+  font-size: var(--text-sm);
+  color: var(--slate-500);
+  margin-bottom: var(--sp-3);
+  flex-wrap: wrap;
+}
+.ann-hero__title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-6);
+}
+.ann-hero__body {
+  font-size: var(--text-sm);
+  color: var(--slate-700);
+  line-height: 1.8;
+}
+.ann-hero__body h1, .ann-hero__body h2, .ann-hero__body h3 {
+  margin-top: var(--sp-4); margin-bottom: var(--sp-2);
+}
+.ann-hero__body table { width: 100%; border-collapse: collapse; margin: var(--sp-3) 0; }
+.ann-hero__body table td, .ann-hero__body table th {
+  border: 1px solid var(--slate-200);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--text-sm);
+}
+.ann-attachments {
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4) var(--sp-5);
+}
+.ann-att-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--slate-100);
+  font-size: var(--text-sm);
+  color: var(--brand-600);
+}
+.ann-att-item:last-child { border-bottom: none; }
+.ann-att-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ ann.AnnouncementSubject|truncate(40) }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('announcements.index') }}">Announcements</a>
+      <span>/</span>
+      <span>{{ ann.AnnouncementSubject|truncate(30) }}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:var(--sp-2);">
+    {% if is_admin %}
+    <a href="{{ url_for('announcements.edit_form', ann_id=ann.id) }}" class="btn btn-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+      Edit
+    </a>
+    <form method="post" action="{{ url_for('announcements.delete', ann_id=ann.id) }}" style="display:inline;">
+      <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this announcement permanently?')">Delete</button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('announcements.index') }}" class="btn btn-ghost">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+      Back
+    </a>
+  </div>
+</div>
+
+<div class="ann-hero">
+  <div class="ann-hero__meta">
+    <span class="badge">{{ ann.CategoryName or 'General' }}</span>
+    <span>Posted {{ ann.created_on.strftime('%d %B %Y at %H:%M') if ann.created_on else '' }}</span>
+    <span>&bull;</span>
+    <span>By {{ ann.created_by }}</span>
+  </div>
+  <h2 class="ann-hero__title">{{ ann.AnnouncementSubject }}</h2>
+  <div class="ann-hero__body">{{ ann.body_html|safe }}</div>
+</div>
+
+{% if ann.attachment_list %}
+<div class="ann-attachments">
+  <h3 style="font-size:var(--text-base);font-weight:var(--font-bold);margin-bottom:var(--sp-3);">Attachments ({{ ann.attachment_list|length }})</h3>
+  {% for fname in ann.attachment_list %}
+  <a class="ann-att-item" href="{{ url_for('static', filename='uploads/announcements/' + fname) }}" target="_blank">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+    {{ fname }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if ann else 'New' }} Announcement{% endblock %}
+
+{% block head %}
+<style>
+.form-section {
+  margin-bottom: var(--sp-8);
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--slate-100);
+}
+.form-section:last-child { border-bottom: none; }
+.form-section__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-5);
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.form-section__title svg { width: 22px; height: 22px; color: var(--brand-500); }
+.rich-editor {
+  min-height: 200px;
+  border: 1px solid var(--slate-300);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  background: var(--white);
+}
+.rich-editor:focus { outline: none; border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(0,102,51,.15); }
+.toolbar {
+  display: flex; gap: var(--sp-1); flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.toolbar button {
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--slate-600);
+}
+.toolbar button:hover { background: var(--slate-100); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ 'Edit' if ann else 'New' }} Announcement</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('announcements.index') }}">Announcements</a>
+      <span>/</span>
+      <span>{{ 'Edit' if ann else 'Create' }}</span>
+    </div>
+  </div>
+  <a href="{{ url_for('announcements.index') }}" class="btn btn-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+    Back
+  </a>
+</div>
+
+<form method="post"
+      action="{{ url_for('announcements.edit_post', ann_id=ann.id) if ann else url_for('announcements.create_post') }}"
+      enctype="multipart/form-data" data-testid="ann-form">
+  <div class="card">
+    <div class="card__body">
+
+      <!-- Category & Subject -->
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46"/></svg>
+          Details
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Category *</label>
+            <select name="category_id" class="form-select" required data-testid="select-category">
+              <option value="">Select Category</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}"
+                {{ 'selected' if (form.get('category_id')|string == cat.id|string) or (ann and ann.SubMenuNameID|string == cat.id|string) }}>
+                {{ cat.SubMenuName }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject *</label>
+            <input type="text" name="subject" class="form-input" required
+                   value="{{ form.get('subject', '') or (ann.AnnouncementSubject if ann else '') }}"
+                   placeholder="Announcement subject" data-testid="input-subject">
+          </div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/></svg>
+          Content
+        </div>
+        <div class="toolbar" id="editorToolbar">
+          <button type="button" onclick="execCmd('bold')" title="Bold"><strong>B</strong></button>
+          <button type="button" onclick="execCmd('italic')" title="Italic"><em>I</em></button>
+          <button type="button" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
+          <button type="button" onclick="execCmd('insertUnorderedList')" title="Bullet List">&bull; List</button>
+          <button type="button" onclick="execCmd('insertOrderedList')" title="Numbered List">1. List</button>
+          <button type="button" onclick="execCmd('justifyLeft')" title="Align Left">&#8676;</button>
+          <button type="button" onclick="execCmd('justifyCenter')" title="Center">&#8596;</button>
+          <button type="button" onclick="execCmd('justifyRight')" title="Align Right">&#8677;</button>
+        </div>
+        <div class="rich-editor" contenteditable="true" id="bodyEditor" data-testid="body-editor">{{ (ann.body_html if ann else form.get('body', ''))|safe }}</div>
+        <input type="hidden" name="body" id="bodyHidden">
+      </div>
+
+      <!-- Attachments -->
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+          Attachments
+        </div>
+        {% if ann and ann.attachment_list %}
+        <p style="font-size:var(--text-sm);color:var(--slate-500);margin-bottom:var(--sp-2);">Existing files: {{ ann.attachment_list|join(', ') }}</p>
+        {% endif %}
+        <div class="form-group">
+          <label class="form-label">Upload Files</label>
+          <input type="file" name="files" class="form-input" multiple data-testid="input-files">
+          <small style="color:var(--slate-500);margin-top:var(--sp-1);display:block;">
+            Max 25 MB per file. Multiple files allowed.
+          </small>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <a href="{{ url_for('announcements.index') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary" data-testid="btn-save" onclick="document.getElementById('bodyHidden').value=document.getElementById('bodyEditor').innerHTML;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          {{ 'Save Changes' if ann else 'Publish Announcement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<script>
+function execCmd(cmd) { document.execCommand(cmd, false, null); }
+// Sync editor on form submit
+document.querySelector('[data-testid="ann-form"]').addEventListener('submit', function() {
+  document.getElementById('bodyHidden').value = document.getElementById('bodyEditor').innerHTML;
+});
+</script>
+{% endblock %}

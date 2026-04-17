@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ module_name }} — Coming Soon{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ module_name }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <span>{{ module_name }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 600px; margin: var(--sp-10) auto; text-align: center;">
+  <div class="card__body" style="padding: var(--sp-12);">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+         style="width: 64px; height: 64px; color: var(--primary-400); margin-bottom: var(--sp-4);">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M11.42 15.17l-5.44-5.44M16.72 11.06a5.08 5.08 0 01-4.19 4.19m0 0a5.08 5.08 0 01-4.19-4.19m4.19 4.19v3.56m0-3.56l5.44-5.44M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <h2 style="margin-bottom: var(--sp-2);">{{ module_name }}</h2>
+    <p style="color: var(--slate-500); margin-bottom: var(--sp-6);">
+      This module is currently under development and will be available soon.<br>
+      The legacy PHP version is being migrated to the modern Flask platform.
+    </p>
+    <a href="{{ url_for('dashboard.home') }}" class="btn btn-primary">Back to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

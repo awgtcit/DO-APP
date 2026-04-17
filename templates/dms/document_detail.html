@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.DocName }} — Document Detail{% endblock %}
+
+{% block head %}
+<style>
+.doc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-6);
+  flex-wrap: wrap;
+}
+.doc-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+
+.detail-section { margin-bottom: var(--sp-8); }
+.detail-section__title {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: 2px solid var(--brand-500);
+  display: inline-block;
+}
+.detail-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-6);
+}
+@media (max-width: 768px) { .detail-two-col { grid-template-columns: 1fr; } }
+.detail-field { margin-bottom: var(--sp-4); }
+.detail-field__label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+.detail-field__value {
+  font-size: var(--text-sm);
+  color: var(--slate-800);
+  font-weight: var(--font-medium);
+}
+
+.status-large {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.status-large--draft              { background: #f1f5f9; color: #475569; }
+.status-large--submitted          { background: #fee2e2; color: #b91c1c; }
+.status-large--approved           { background: #e8f5e9; color: #006633; }
+.status-large--finalized          { background: #dcfce7; color: #15803d; }
+.status-large--approver-rejected  { background: #fef3c7; color: #a16207; }
+.status-large--reviewer-rejected  { background: #fecaca; color: #991b1b; }
+.status-large--cancelled          { background: #f1f5f9; color: #475569; }
+
+.attachment-list { list-style: none; padding: 0; margin: 0; }
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--sp-2);
+  background: var(--slate-50);
+}
+.attachment-item__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--slate-700);
+  display: flex; align-items: center; gap: var(--sp-2);
+}
+.attachment-item__actions { display: flex; gap: var(--sp-2); }
+.upload-zone {
+  background: var(--slate-50);
+  border: 2px dashed var(--slate-300);
+  border-radius: var(--radius-md);
+  padding: var(--sp-5);
+  text-align: center;
+  margin-top: var(--sp-3);
+}
+
+.transition-modal {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+}
+.transition-modal.open { display: flex; }
+.transition-modal__box {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6);
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ doc.DocName }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('dms.departments') }}">Documents</a>
+      <span>/</span>
+      <a href="{{ url_for('dms.document_list', dept_id=doc.DeptID) }}">{{ doc.DepartmentName or 'Department' }}</a>
+      <span>/</span>
+      <span>{{ doc.DocName|truncate(30) }}</span>
+    </div>
+  </div>
+  <div class="doc-actions">
+    {% set slug = doc.status_label|default('Draft')|lower|replace(' ', '-') %}
+    <span class="status-large status-large--{{ slug }}" data-testid="status-badge">
+      {{ doc.status_label }}
+    </span>
+
+    {% if doc.can_edit %}
+    <a href="{{ url_for('dms.edit_form', doc_id=doc.id) }}" class="btn btn-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+      Edit
+    </a>
+    {% endif %}
+
+    {% for t in doc.allowed_transitions|default([]) %}
+    <button type="button" class="btn {{ 'btn-primary' if t.to in (2,3,7) else 'btn-danger' if t.to in (4,8,9) else 'btn-secondary' }} btn-sm"
+            onclick="openStatusModal({{ t.to }}, '{{ t.label }}')" data-testid="btn-status-{{ t.to }}">{{ t.label }}</button>
+    {% endfor %}
+
+    <a href="{{ url_for('dms.document_list', dept_id=doc.DeptID) }}" class="btn btn-ghost">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+      Back
+    </a>
+  </div>
+</div>
+
+<!-- Document details -->
+<div class="card">
+  <div class="card__body">
+    <div class="detail-two-col">
+      <div>
+        <div class="detail-section">
+          <div class="detail-section__title">Document Information</div>
+          <div class="detail-field">
+            <div class="detail-field__label">Document Name</div>
+            <div class="detail-field__value">{{ doc.DocName }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Reference Number</div>
+            <div class="detail-field__value">{{ doc.ReferenceNo or '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Document Type</div>
+            <div class="detail-field__value">{{ doc.DocumentType or '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Department</div>
+            <div class="detail-field__value">{{ doc.DepartmentName or '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Company</div>
+            <div class="detail-field__value">{{ doc.CompanyName or '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Party</div>
+            <div class="detail-field__value">{{ doc.PartyName or '—' }}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="detail-section">
+          <div class="detail-section__title">Dates &amp; Audit</div>
+          <div class="detail-field">
+            <div class="detail-field__label">Document Date</div>
+            <div class="detail-field__value">{{ doc.DocDate.strftime('%d %b %Y') if doc.DocDate else '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Expiry Date</div>
+            <div class="detail-field__value">{{ doc.ExpiryDate.strftime('%d %b %Y') if doc.ExpiryDate else '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Created By</div>
+            <div class="detail-field__value">{{ doc.CreatorFirst }} {{ doc.CreatorLast }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Created On</div>
+            <div class="detail-field__value">{{ doc.CreatedOn.strftime('%d %b %Y %H:%M') if doc.CreatedOn else '—' }}</div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section__title">Your Role</div>
+          <div class="detail-field">
+            <div class="detail-field__value">
+              {% if role_flags.is_uploader %}<span class="badge badge--draft">Uploader</span>{% endif %}
+              {% if role_flags.is_approver %}<span class="badge" style="background:#e8f5e9;color:#006633;">Approver</span>{% endif %}
+              {% if role_flags.is_reviewer2 %}<span class="badge" style="background:#dcfce7;color:#15803d;">Reviewer</span>{% endif %}
+              {% if role_flags.is_itadmin %}<span class="badge" style="background:#f1f5f9;color:#475569;">IT Admin</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if doc.Remarks %}
+    <div class="detail-section">
+      <div class="detail-section__title">Remarks</div>
+      <div class="detail-field__value" style="white-space: pre-wrap;">{{ doc.Remarks }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Attachments -->
+<div class="card" style="margin-top: var(--sp-6);">
+  <div class="card__header" style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Attachments</h3>
+    <span class="badge">{{ attachments|length }}</span>
+  </div>
+  <div class="card__body">
+    {% if attachments %}
+    <ul class="attachment-list" data-testid="attachment-list">
+      {% for att in attachments %}
+      <li class="attachment-item">
+        <div class="attachment-item__name">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:18px;height:18px;color:var(--brand-500);"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/></svg>
+          {{ att.OriginalName or att.FileName }}
+        </div>
+        <div class="attachment-item__actions">
+          <a href="{{ url_for('static', filename='uploads/dms/' + att.FileName) }}" target="_blank" class="btn btn-ghost btn-sm">Download</a>
+          {% if doc.can_edit %}
+          <form method="post" action="{{ url_for('dms.delete_attachment_route', doc_id=doc.id, att_id=att.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this attachment?')">Remove</button>
+          </form>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p style="color: var(--slate-500); font-size: var(--text-sm); text-align: center; padding: var(--sp-4);">No attachments yet.</p>
+    {% endif %}
+
+    {% if doc.can_edit or doc.DocStatusID in (1,2,3) %}
+    <div class="upload-zone">
+      <form method="post" action="{{ url_for('dms.upload_attachment', doc_id=doc.id) }}" enctype="multipart/form-data"
+            style="display:flex;align-items:center;justify-content:center;gap:var(--sp-3);">
+        <input type="file" name="file" required class="form-input" style="max-width:300px;">
+        <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Status Change Modal -->
+<div class="transition-modal" id="statusModal">
+  <div class="transition-modal__box">
+    <h3 id="modalTitle" style="margin-bottom:var(--sp-4);"></h3>
+    <form method="post" action="{{ url_for('dms.change_status', doc_id=doc.id) }}" id="statusForm">
+      <input type="hidden" name="new_status" id="modalStatusInput">
+      <div class="form-group">
+        <label class="form-label">Remarks (required for rejections)</label>
+        <textarea name="remarks" class="form-input" rows="3" id="modalRemarks" placeholder="Add your remarks..."></textarea>
+      </div>
+      <div style="display:flex;gap:var(--sp-2);justify-content:flex-end;margin-top:var(--sp-4);">
+        <button type="button" class="btn btn-ghost" onclick="closeStatusModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="modalSubmitBtn">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openStatusModal(statusId, label) {
+  document.getElementById('modalTitle').textContent = 'Change Status to: ' + label;
+  document.getElementById('modalStatusInput').value = statusId;
+  document.getElementById('modalRemarks').value = '';
+  document.getElementById('statusModal').classList.add('open');
+  // Require remarks for rejections (4, 8)
+  const remarksEl = document.getElementById('modalRemarks');
+  remarksEl.required = (statusId === 4 || statusId === 8);
+}
+function closeStatusModal() {
+  document.getElementById('statusModal').classList.remove('open');
+}
+// Close on backdrop click
+document.getElementById('statusModal').addEventListener('click', function(e) {
+  if (e.target === this) closeStatusModal();
+});
+</script>
+{% endblock %}

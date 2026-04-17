@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}Company Announcements{% endblock %}
+
+{% block head %}
+<style>
+.ann-grid {
+  display: grid;
+  gap: var(--sp-5);
+  margin-top: var(--sp-4);
+}
+.ann-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6);
+  transition: box-shadow .2s var(--ease);
+}
+.ann-card:hover { box-shadow: var(--shadow-md); }
+.ann-card__meta {
+  display: flex;
+  gap: var(--sp-3);
+  font-size: var(--text-xs);
+  color: var(--slate-500);
+  margin-bottom: var(--sp-2);
+  flex-wrap: wrap;
+}
+.ann-card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-2);
+}
+.ann-card__title a { color: inherit; text-decoration: none; }
+.ann-card__title a:hover { color: var(--brand-600); }
+.ann-card__body {
+  font-size: var(--text-sm);
+  color: var(--slate-600);
+  line-height: 1.6;
+  max-height: 4.8em;
+  overflow: hidden;
+  position: relative;
+}
+.ann-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--sp-3);
+}
+.filter-sidebar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  border: 1px solid var(--slate-200);
+  background: var(--white);
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: all .15s var(--ease);
+}
+.chip:hover { background: var(--slate-50); border-color: var(--slate-300); }
+.chip.active { background: var(--brand-600); color: var(--white); border-color: var(--brand-600); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Company Announcements</h1>
+    <div class="breadcrumb page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <span>Announcements</span>
+    </div>
+  </div>
+  {% if is_admin %}
+  <div style="display:flex;gap:var(--sp-2);">
+    <a href="{{ url_for('announcements.create_form') }}" class="btn btn-primary" data-testid="btn-create-ann">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+      New Announcement
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filter bar -->
+<div class="filter-sidebar">
+  <a href="{{ url_for('announcements.index', q=search_query) }}"
+     class="chip {{ 'active' if not current_category }}">All</a>
+  {% for cat in categories %}
+  <a href="{{ url_for('announcements.index', category=cat.id, q=search_query) }}"
+     class="chip {{ 'active' if current_category == cat.id }}">{{ cat.SubMenuName }}</a>
+  {% endfor %}
+
+  {% if is_admin %}
+  <form method="post" action="{{ url_for('announcements.add_category') }}" style="display:flex;gap:4px;margin-left:var(--sp-2);">
+    <input type="text" name="name" class="form-input form-input--sm" placeholder="+ Category" style="width:120px;font-size:var(--text-xs);" required>
+    <button type="submit" class="btn btn-secondary btn-sm" style="font-size:var(--text-xs);">Add</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Search -->
+<form method="get" action="{{ url_for('announcements.index') }}" style="margin-bottom:var(--sp-4);display:flex;gap:var(--sp-2);max-width:400px;">
+  {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+  <input type="text" name="search" class="form-input" placeholder="Search announcements…" value="{{ search_query or '' }}" data-testid="search-input">
+  <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+</form>
+
+<!-- Announcement cards -->
+<div class="ann-grid">
+  {% for ann in announcements %}
+  <div class="ann-card" data-testid="ann-card">
+    <div class="ann-card__meta">
+      <span>{{ ann.CategoryName or 'General' }}</span>
+      <span>&bull;</span>
+      <span>{{ ann.created_on.strftime('%d %b %Y') if ann.created_on else '' }}</span>
+      <span>&bull;</span>
+      <span>{{ ann.created_by }}</span>
+    </div>
+    <div class="ann-card__title">
+      <a href="{{ url_for('announcements.detail', ann_id=ann.id) }}">{{ ann.AnnouncementSubject }}</a>
+    </div>
+    <div class="ann-card__body">{{ ann.body_preview|striptags|truncate(200) }}</div>
+    <div class="ann-card__footer">
+      <a href="{{ url_for('announcements.detail', ann_id=ann.id) }}" class="btn btn-ghost btn-sm">Read more &rarr;</a>
+      {% if is_admin %}
+      <div style="display:flex;gap:var(--sp-1);">
+        <a href="{{ url_for('announcements.edit_form', ann_id=ann.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+        <form method="post" action="{{ url_for('announcements.delete', ann_id=ann.id) }}" style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this announcement?')">Delete</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if not announcements %}
+  <div class="card" style="text-align:center;padding:var(--sp-8);">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:48px;height:48px;color:var(--slate-300);margin:0 auto var(--sp-3);display:block;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46"/></svg>
+    <h3 style="color:var(--slate-600);">No announcements found</h3>
+    <p style="color:var(--slate-500);font-size:var(--text-sm);">
+      {% if search_query %}No results for "{{ search_query }}".{% else %}No announcements yet.{% endif %}
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if meta.total_pages > 1 %}
+<div style="margin-top:var(--sp-6);text-align:center;">
+  <div class="pagination">
+    <a href="{{ url_for('announcements.index', page=meta.page - 1, category=current_category, q=search_query) }}"
+       class="pagination__item {{ 'disabled' if meta.page <= 1 }}">&laquo; Prev</a>
+    {% for p in range(1, meta.total_pages + 1) %}
+      {% if p <= 5 or p > meta.total_pages - 2 or (p >= meta.page - 1 and p <= meta.page + 1) %}
+      <a href="{{ url_for('announcements.index', page=p, category=current_category, q=search_query) }}"
+         class="pagination__item {{ 'active' if p == meta.page }}">{{ p }}</a>
+      {% elif p == 6 or p == meta.total_pages - 2 %}
+      <span class="pagination__item disabled">…</span>
+      {% endif %}
+    {% endfor %}
+    <a href="{{ url_for('announcements.index', page=meta.page + 1, category=current_category, q=search_query) }}"
+       class="pagination__item {{ 'disabled' if meta.page >= meta.total_pages }}">Next &raquo;</a>
+  </div>
+  <p style="font-size: var(--text-xs); color: var(--slate-400); margin-top: var(--sp-2);">
+    Page {{ meta.page }} of {{ meta.total_pages }} ({{ meta.total }} announcements)
+  </p>
+</div>
+{% endif %}
+{% endblock %}

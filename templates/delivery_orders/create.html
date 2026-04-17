@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Create Delivery Order{% endblock %}
+
+{% block head %}
+<style>
+.wizard-steps {
+  display: flex;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-8);
+}
+.wizard-step {
+  flex: 1;
+  text-align: center;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--slate-100);
+  color: var(--slate-500);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-md);
+  position: relative;
+}
+.wizard-step.active {
+  background: var(--brand-600);
+  color: var(--white);
+}
+.wizard-step.completed {
+  background: var(--green-500);
+  color: var(--white);
+}
+.form-section {
+  margin-bottom: var(--sp-8);
+  padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--slate-100);
+}
+.form-section:last-child { border-bottom: none; }
+.form-section__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.form-section__title svg { width: 22px; height: 22px; color: var(--brand-500); }
+.last-po-ref {
+  font-size: var(--text-sm);
+  color: var(--slate-500);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--slate-50);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--slate-300);
+  margin-top: var(--sp-4);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Create New Order</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('webapp.index') }}">Web Application</a>
+      <span>/</span>
+      <a href="{{ url_for('delivery_orders.dashboard') }}">Delivery Order</a>
+      <span>/</span>
+      <span>Create New Order</span>
+    </div>
+  </div>
+  <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+    Back
+  </a>
+</div>
+
+<form method="post" action="{{ url_for('delivery_orders.create_post') }}" id="createOrderForm">
+  <div class="card">
+    <div class="card__body">
+
+      <!-- Section 1: Basic Info -->
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+          Order Details
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Date *</label>
+            <input type="date" name="po_date" class="form-input" required value="{{ form.get('po_date', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">On Behalf Of *</label>
+            <select name="on_behalf_of" class="form-select ss-target" required>
+              <option value="">Select On Behalf Of</option>
+              {% for mgr in lookups.sales_managers %}
+              <option value="{{ mgr.EmpID }}" {{ 'selected' if form.get('on_behalf_of')|string == mgr.EmpID|string }}>
+                {{ mgr.ReferenceName or (mgr.FirstName + ' ' + mgr.LastName) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Loading Date *</label>
+            <input type="date" name="loading_date" class="form-input" required value="{{ form.get('loading_date', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Delivery Terms *</label>
+            <select name="delivery_terms" class="form-select ss-target" required>
+              <option value="">Select Delivery Terms</option>
+              {% for val, label in lookups.delivery_terms %}
+              <option value="{{ val }}" {{ 'selected' if form.get('delivery_terms') == val }}>{{ val }} — {{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Terms *</label>
+            <input type="text" name="payment_terms" class="form-input" required placeholder="e.g.: BANK, CASH, CHEQUE, etc.." value="{{ form.get('payment_terms', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Transportation Mode *</label>
+            <select name="transportation_mode" class="form-select ss-target" required>
+              <option value="">Select Transportation Mode</option>
+              {% for val, label in lookups.transport_modes %}
+              <option value="{{ val }}" {{ 'selected' if form.get('transportation_mode') == val }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Shipping -->
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+          Shipping Details
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Bill To *</label>
+            <select name="bill_to" class="form-select ss-target" id="billToSelect" required>
+              <option value="">Select Customer</option>
+              {% for c in lookups.bill_to_list %}
+              <option value="{{ c.SapCode }}" {{ 'selected' if form.get('bill_to')|string == c.SapCode|string }}>
+                {{ c.SapCodeFromSAP or c.SapCode }} | {{ c.Name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ship To *</label>
+            <select name="ship_to" class="form-select ss-target" id="shipToSelect" required>
+              <option value="">Select Ship To</option>
+              {% for c in lookups.bill_to_list %}
+              <option value="{{ c.SapCode }}" {{ 'selected' if form.get('ship_to')|string == c.SapCode|string }}>
+                {{ c.SapCodeFromSAP or c.SapCode }} | {{ c.Name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Point of Exit *</label>
+            <select name="point_of_exit" class="form-select ss-target" required>
+              <option value="">Select Point of Exit</option>
+              {% for p in lookups.point_of_exit %}
+              <option value="{{ p.ExitID }}" {{ 'selected' if form.get('point_of_exit')|string == p.ExitID|string }}>{{ p.ExitName }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Point of Discharge *</label>
+            <input type="text" name="point_of_discharge" class="form-input" required value="{{ form.get('point_of_discharge', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Final Destination *</label>
+            <input type="text" name="final_destination" class="form-input" required value="{{ form.get('final_destination', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Currency *</label>
+            <select name="currency" class="form-select ss-target" required>
+              {% for cur in lookups.currencies %}
+              <option value="{{ cur }}" {{ 'selected' if form.get('currency', 'USD') == cur }}>{{ cur }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notify Party *</label>
+            <input type="text" name="notify_party" class="form-input" required value="{{ form.get('notify_party', '') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Shipping Agent *</label>
+            <input type="text" name="shipping_agent" class="form-input" required value="{{ form.get('shipping_agent', '') }}">
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="last-po-ref">
+          Last PO &rarr; <strong>{{ lookups.last_po }}</strong>
+        </div>
+        <div style="display:flex;gap:var(--sp-3);">
+          <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+            Create Order
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</form>
+
+{% include "delivery_orders/_restricted_word_check.html" %}
+{% include "delivery_orders/_searchable_select.html" %}
+{% endblock %}

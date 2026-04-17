@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Information Security Policy — Intranet Portal{% endblock %}
+
+{% block layout %}
+<div class="login-page" style="align-items: flex-start; padding-top: var(--sp-12);">
+  <div class="login-card" style="max-width: 640px;">
+    <h1 style="font-size: var(--text-xl);">Information Security Policy</h1>
+    <p class="subtitle" style="margin-bottom: var(--sp-6);">
+      You must accept the policy before accessing the system.
+    </p>
+
+    <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--slate-200);
+                border-radius: var(--radius-md); padding: var(--sp-5); margin-bottom: var(--sp-6);
+                font-size: var(--text-sm); color: var(--slate-700); line-height: var(--leading-relaxed);">
+      <h3 style="margin-bottom: var(--sp-3);">1. Purpose</h3>
+      <p style="margin-bottom: var(--sp-4);">
+        This policy establishes the framework for protecting the organization's information assets.
+        All employees are required to comply with the guidelines outlined herein to ensure the
+        confidentiality, integrity, and availability of organizational data.
+      </p>
+      <h3 style="margin-bottom: var(--sp-3);">2. Scope</h3>
+      <p style="margin-bottom: var(--sp-4);">
+        This policy applies to all employees, contractors, and third-party users who have access
+        to the organization's information systems and data.
+      </p>
+      <h3 style="margin-bottom: var(--sp-3);">3. Responsibilities</h3>
+      <p style="margin-bottom: var(--sp-4);">
+        Users must protect login credentials, report security incidents immediately,
+        use systems only for authorized purposes, and comply with data classification standards.
+      </p>
+      <h3 style="margin-bottom: var(--sp-3);">4. Acceptable Use</h3>
+      <p style="margin-bottom: var(--sp-4);">
+        Company systems and networks are to be used for business purposes. Personal use should be
+        limited and must not compromise security or productivity.
+      </p>
+      <h3 style="margin-bottom: var(--sp-3);">5. Compliance</h3>
+      <p>
+        Failure to comply with this policy may result in disciplinary action up to and including
+        termination of employment.
+      </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.isp_accept_post') }}">
+      <label style="display: flex; align-items: flex-start; gap: var(--sp-3); cursor: pointer;
+                     font-size: var(--text-sm); color: var(--slate-700); margin-bottom: var(--sp-5);">
+        <input type="checkbox" id="isp-accept" required
+               style="margin-top: 3px; width: 18px; height: 18px; accent-color: var(--brand-600);">
+        <span>I have read, understood, and agree to comply with the Information Security Policy.</span>
+      </label>
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" id="accept-btn" disabled>
+        Accept &amp; Continue
+      </button>
+    </form>
+
+    <script>
+      document.getElementById('isp-accept').addEventListener('change', function() {
+        document.getElementById('accept-btn').disabled = !this.checked;
+      });
+    </script>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Employee Directory — Intranet{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-header__left">
+    <h1>Employee Directory</h1>
+    <div class="breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <span>Employee Forum</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI stats -->
+<div class="stats-grid" style="margin-bottom:var(--sp-6);">
+  <div class="stat-card">
+    <div class="stat-card__label">Total Employees</div>
+    <div class="stat-card__value">{{ stats.total_employees|default(0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__label">Departments</div>
+    <div class="stat-card__value">{{ stats.total_departments|default(0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__label">Birthdays This Month</div>
+    <div class="stat-card__value" style="color:var(--brand-600);">
+      <a href="{{ url_for('forum.birthdays') }}" style="color:inherit;text-decoration:none;">
+        {{ stats.birthdays_this_month|default(0) }}
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:var(--sp-6);">
+  <div class="card__body" style="padding:var(--sp-4);">
+    <form method="get" action="{{ url_for('forum.index') }}" style="display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:end;">
+      <div style="flex:1;min-width:200px;">
+        <label class="form-label" for="search">Search</label>
+        <input type="text" id="search" name="search" class="form-input"
+               placeholder="Name, email, phone…" value="{{ search }}">
+      </div>
+      <div style="min-width:180px;">
+        <label class="form-label" for="department">Department</label>
+        <select name="department" id="department" class="form-input">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+          <option value="{{ d.DeptName }}" {{ 'selected' if department == d.DeptName }}>
+            {{ d.DeptName }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:var(--sp-2);">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('forum.index') }}" class="btn btn-ghost btn-sm">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Directory table -->
+<div class="card">
+  <div class="card__body" style="padding:0;">
+    {% if employees %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Department</th>
+          <th>Contact</th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:var(--sp-3);">
+              <div class="topbar__avatar" style="width:32px;height:32px;font-size:12px;">
+                {{ (e.FirstName or 'U')[0]|upper }}{{ (e.LastName or '')[0]|upper }}
+              </div>
+              <span>{{ e.FirstName }} {{ e.LastName }}</span>
+            </div>
+          </td>
+          <td>{{ e.EmailAddress or '—' }}</td>
+          <td>{{ e.Department or '—' }}</td>
+          <td>{{ e.ContactNo or '—' }}</td>
+          <td>
+            <a href="{{ url_for('forum.profile', emp_id=e.EmpID) }}" class="btn btn-ghost btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="padding:var(--sp-4);">
+      {% if page > 1 %}
+        <a href="{{ url_for('forum.index', page=page-1, search=search, department=department) }}" class="btn btn-ghost btn-sm">&laquo; Prev</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+          <span class="btn btn-primary btn-sm">{{ p }}</span>
+        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+          <a href="{{ url_for('forum.index', page=p, search=search, department=department) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 3 %}
+          <span>&hellip;</span>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <a href="{{ url_for('forum.index', page=page+1, search=search, department=department) }}" class="btn btn-ghost btn-sm">Next &raquo;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <p>No employees found matching your criteria.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

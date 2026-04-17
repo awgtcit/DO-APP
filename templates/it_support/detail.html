@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ ticket.id }} — IT Support{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Ticket #{{ ticket.id }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <a href="{{ url_for('it_support.index') }}">IT Support</a>
+      <span>/</span>
+      <span>#{{ ticket.id }}</span>
+    </div>
+  </div>
+  <div style="display: flex; gap: var(--sp-3);">
+    <a href="{{ url_for('it_support.edit_form', ticket_id=ticket.id) }}" class="btn btn-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+      Edit
+    </a>
+    <form method="POST" action="{{ url_for('it_support.delete', ticket_id=ticket.id) }}">
+      <button type="submit" class="btn btn-danger" data-confirm="Are you sure you want to delete this ticket? This action cannot be undone.">
+        Delete
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ Ticket Detail Card ═══ -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card__header">
+      <h2 class="card__title">{{ ticket.subject }}</h2>
+      {% set status_class = {'open': 'amber', 'in_progress': 'brand', 'closed': 'green'} %}
+      <span class="badge badge--{{ status_class.get(ticket.status, 'slate') }}" style="font-size: var(--text-sm);">
+        {{ ticket.status | replace('_', ' ') | title }}
+      </span>
+    </div>
+    <div class="card__body">
+      <dl class="detail-grid">
+        <dt>Requester</dt>
+        <dd>{{ ticket.requester_name or ticket.requester }}</dd>
+
+        <dt>Email</dt>
+        <dd>{{ ticket.requester_email or '—' }}</dd>
+
+        <dt>On Behalf Of</dt>
+        <dd>{{ ticket.onBehalfOf or '—' }}</dd>
+
+        <dt>Priority</dt>
+        <dd><span class="badge priority-{{ ticket.priority | lower }}">{{ ticket.priority }}</span></dd>
+
+        <dt>Created</dt>
+        <dd>{{ ticket.created_on.strftime('%d %b %Y, %H:%M') if ticket.created_on else '—' }}</dd>
+      </dl>
+
+      <div style="margin-top: var(--sp-6);">
+        <h3 style="font-size: var(--text-sm); font-weight: var(--font-semibold); color: var(--slate-600); margin-bottom: var(--sp-2);">
+          Description
+        </h3>
+        <div style="background: var(--slate-50); border-radius: var(--radius-md); padding: var(--sp-4);
+                    font-size: var(--text-sm); color: var(--slate-700); line-height: var(--leading-relaxed);
+                    white-space: pre-wrap;">{{ ticket.summary or 'No description provided.' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Actions Panel ═══ -->
+  <div>
+    <div class="card">
+      <div class="card__header">
+        <h2 class="card__title">Change Status</h2>
+      </div>
+      <div class="card__body" style="display: flex; flex-direction: column; gap: var(--sp-3);">
+        {% if ticket.status != 'in_progress' %}
+        <button class="btn btn-primary" style="width:100%;"
+                data-status-url="{{ url_for('it_support.status_change', ticket_id=ticket.id) }}"
+                data-status-value="in_progress">
+          Mark In Progress
+        </button>
+        {% endif %}
+        {% if ticket.status != 'closed' %}
+        <button class="btn btn-secondary" style="width:100%; color: var(--green-600); border-color: var(--green-600);"
+                data-status-url="{{ url_for('it_support.status_change', ticket_id=ticket.id) }}"
+                data-status-value="closed">
+          Close Ticket
+        </button>
+        {% endif %}
+        {% if ticket.status == 'closed' %}
+        <button class="btn btn-secondary" style="width:100%;"
+                data-status-url="{{ url_for('it_support.status_change', ticket_id=ticket.id) }}"
+                data-status-value="open">
+          Reopen Ticket
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block title %}Orders — Delivery Orders{% endblock %}
+
+{% block head %}
+<style>
+  .orders-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+    flex-wrap: wrap;
+  }
+
+  .orders-toolbar .form-select {
+    width: auto;
+    min-width: 180px;
+  }
+
+  .orders-toolbar .form-input {
+    width: auto;
+    min-width: 240px;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    padding: 2px 10px;
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  .status-pill--draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .status-pill--submitted {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .status-pill--confirmed {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-pill--price-agreed {
+    background: #e8f5e9;
+    color: #006633;
+  }
+
+  .status-pill--need-attachment {
+    background: #fef9c3;
+    color: #a16207;
+  }
+
+  .status-pill--rejected {
+    background: #fecaca;
+    color: #991b1b;
+  }
+
+  .status-pill--cancelled {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .status-pill--customs-document-updated {
+    background: #e0f2fe;
+    color: #0c4a6e;
+  }
+
+  .status-pill--delivered {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .clickable-row {
+    cursor: pointer;
+  }
+
+  .clickable-row:hover {
+    background: var(--brand-50) !important;
+  }
+
+  .order-count-badge {
+    background: var(--slate-100);
+    color: var(--slate-600);
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>
+      Orders
+      <span class="order-count-badge">{{ total }}</span>
+    </h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('webapp.index') }}">Web Application</a>
+      <span>/</span>
+      <a href="{{ url_for('delivery_orders.dashboard') }}">Delivery Order</a>
+      <span>/</span>
+      <span>Orders</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:var(--sp-3);">
+    {% if can_create %}
+    <a href="{{ url_for('delivery_orders.create_form') }}" class="btn btn-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      New Order
+    </a>
+    {% endif %}
+    <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">Dashboard</a>
+  </div>
+</div>
+
+<!-- Toolbar: filter & search -->
+<form method="get" class="orders-toolbar">
+  <label style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-700);">Filter</label>
+  <select name="status" class="form-select" onchange="this.form.submit()">
+    {% for s in status_options %}
+    <option value="{{ s }}" {{ 'selected' if s==current_status }}>{{ s }}{% if s == 'ALL' %} - {{ total }}{% endif %}
+    </option>
+    {% endfor %}
+  </select>
+  <input type="text" name="search" class="form-input" placeholder="Search orders…" value="{{ search }}">
+  <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+</form>
+
+<!-- Export buttons -->
+<div style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-4);flex-wrap:wrap;">
+  <button type="button" class="btn btn-ghost btn-sm" onclick="copyTable()" title="Copy to clipboard">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      style="width:14px;height:14px">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+    </svg>
+    Copy
+  </button>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="exportCSV()" title="Export CSV">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      style="width:14px;height:14px">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+    CSV
+  </button>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="exportExcel()" title="Export Excel">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      style="width:14px;height:14px">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+    Excel
+  </button>
+  <button type="button" class="btn btn-ghost btn-sm" onclick="window.print()" title="Print">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+      style="width:14px;height:14px">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m0 0a48.45 48.45 0 018.5 0" />
+    </svg>
+    Print
+  </button>
+</div>
+
+<!-- Orders table -->
+<div class="card">
+  <div class="table-wrap">
+    <table class="data-table" id="ordersTable">
+      <thead>
+        <tr>
+          <th>Order Date</th>
+          <th>Order No</th>
+          <th>On Behalf Of</th>
+          <th>Loading Date</th>
+          <th>Bill To</th>
+          <th>Created by</th>
+          <th style="text-align:center">Items</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if orders %}
+        {% for o in orders %}
+        <tr class="clickable-row"
+          onclick="window.location='{{ url_for('delivery_orders.order_detail', order_id=o.id) }}'">
+          <td>{{ o.order_date or '—' }}</td>
+          <td style="font-weight:var(--font-semibold);color:var(--brand-700);">{{ o.order_no or '—' }}</td>
+          <td>{{ o.on_behalf_of or '—' }}</td>
+          <td>{{ o.loading_date or '—' }}</td>
+          <td>{{ o.bill_to or '—' }}</td>
+          <td>{{ o.created_by or '—' }}</td>
+          <td style="text-align:center">
+            <span class="badge badge--brand">{{ o.item_count|default(0) }}</span>
+          </td>
+          <td>
+            {% set st = o.status|default('')|upper %}
+            <span class="status-pill status-pill--{{ st|lower|replace(' ', '-') }}">{{ st }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="8" class="empty-state" style="padding:var(--sp-12)">
+            <p>No orders found.</p>
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="?status={{ current_status }}&search={{ search }}&page={{ page - 1 }}" class="pagination__item">&laquo;
+    Prev</a>
+  {% endif %}
+  {% for p in range(1, total_pages + 1) %}
+  {% if p == page %}
+  <span class="pagination__item active">{{ p }}</span>
+  {% elif p <= 3 or p> total_pages - 3 or (p >= page - 2 and p <= page + 2) %} <a
+      href="?status={{ current_status }}&search={{ search }}&page={{ p }}" class="pagination__item">{{ p }}</a>
+      {% elif p == 4 or p == total_pages - 3 %}
+      <span class="pagination__item disabled">…</span>
+      {% endif %}
+      {% endfor %}
+      {% if page < total_pages %} <a href="?status={{ current_status }}&search={{ search }}&page={{ page + 1 }}"
+        class="pagination__item">Next &raquo;</a>
+        {% endif %}
+</div>
+{% endif %}
+
+<script>
+  function getTableData() {
+    const table = document.getElementById('ordersTable');
+    const rows = table.querySelectorAll('tbody tr');
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const data = [];
+    rows.forEach(row => {
+      if (row.querySelector('.empty-state')) return;
+      const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim());
+      data.push(cells);
+    });
+    return { headers, data };
+  }
+
+  function copyTable() {
+    const { headers, data } = getTableData();
+    let txt = headers.join('\t') + '\n';
+    data.forEach(row => { txt += row.join('\t') + '\n'; });
+    navigator.clipboard.writeText(txt).then(() => {
+      const btn = event.target.closest('button');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<span style="color:var(--green-600)">Copied!</span>';
+      setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    });
+  }
+
+  function exportCSV() {
+    const { headers, data } = getTableData();
+    const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+    let csv = headers.map(esc).join(',') + '\n';
+    data.forEach(row => { csv += row.map(esc).join(',') + '\n'; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'delivery_orders.csv';
+    a.click();
+  }
+
+  function exportExcel() {
+    const { headers, data } = getTableData();
+    let html = '<table><tr>' + headers.map(h => '<th>' + h + '</th>').join('') + '</tr>';
+    data.forEach(row => {
+      html += '<tr>' + row.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+    });
+    html += '</table>';
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'delivery_orders.xls';
+    a.click();
+  }
+</script>
+{% endblock %}

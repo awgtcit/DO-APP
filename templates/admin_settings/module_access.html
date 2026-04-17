@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}Module Access — {{ module.display_name }}{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close" onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:900px;margin:0 auto;padding:var(--sp-6);">
+  <!-- Breadcrumb -->
+  <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
+    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <span style="color:var(--slate-300);">/</span>
+    <a href="{{ url_for('admin_settings.modules') }}" style="color:var(--slate-400);text-decoration:none;">Modules</a>
+    <span style="color:var(--slate-300);">/</span>
+    <span style="color:var(--slate-600);">{{ module.display_name }}</span>
+  </div>
+
+  <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);margin-bottom:var(--sp-2);">
+    Access Control — {{ module.display_name }}
+  </h1>
+  <p style="color:var(--slate-500);margin-bottom:var(--sp-6);font-size:var(--text-sm);">
+    Configure which groups and individual users can see this module.
+    If globally enabled, all users see it unless restricted below.
+  </p>
+
+  <!-- Per-Module User Roles -->
+  {% if available_roles or True %}
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);margin-bottom:var(--sp-6);">
+    <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-2);">
+      User Role Assignments
+    </h2>
+    <p style="color:var(--slate-500);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
+      Click a role to view assigned users, add new users, or remove existing ones.
+    </p>
+
+    <!-- Add New Custom Role -->
+    <div style="border:1px dashed var(--slate-300);border-radius:var(--radius-md);padding:var(--sp-4);margin-bottom:var(--sp-4);background:var(--slate-50);">
+      <h3 style="font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--slate-600);margin-bottom:var(--sp-3);">
+        &#43; Create New Role
+      </h3>
+      <form method="POST" style="display:flex;gap:var(--sp-3);align-items:flex-end;flex-wrap:wrap;">
+        <input type="hidden" name="action" value="add_role">
+        <div style="flex:1;min-width:160px;">
+          <label class="form-label">Role Key</label>
+          <input type="text" name="role_key" class="form-input" placeholder="e.g. do_reviewer" required
+                 pattern="[a-zA-Z0-9_]+" title="Only letters, numbers and underscores">
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label class="form-label">Display Label</label>
+          <input type="text" name="display_label" class="form-input" placeholder="e.g. Reviewer" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Create Role</button>
+      </form>
+      {% if custom_roles %}
+      <div style="margin-top:var(--sp-3);display:flex;flex-wrap:wrap;gap:var(--sp-2);">
+        {% for cr in custom_roles %}
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;font-size:var(--text-xs);background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-md);">
+          <strong>{{ cr.display_label }}</strong>
+          <span style="color:var(--slate-400);">({{ cr.role_key }})</span>
+          <form method="POST" style="display:inline;margin:0;">
+            <input type="hidden" name="action" value="delete_role">
+            <input type="hidden" name="role_config_id" value="{{ cr.id }}">
+            <button type="submit" style="background:none;border:none;color:var(--red-500);cursor:pointer;padding:0 2px;font-size:14px;line-height:1;"
+                    onclick="return confirm('Delete custom role {{ cr.display_label }}? This also removes all user assignments for this role.')"
+                    title="Delete custom role">&times;</button>
+          </form>
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if available_roles %}
+
+    <!-- Role tabs -->
+    <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-4);" id="roleTabs">
+      {% for rk, label in available_roles.items() %}
+      <button type="button"
+              class="role-tab{% if loop.first %} role-tab--active{% endif %}"
+              data-role="{{ rk }}"
+              onclick="switchRoleTab('{{ rk }}')">
+        {{ label }}
+        <span class="role-tab__count">{{ role_users_map[rk] | length }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Role panels -->
+    {% for rk, label in available_roles.items() %}
+    <div class="role-panel" id="panel_{{ rk }}" style="{% if not loop.first %}display:none;{% endif %}">
+
+      <!-- Users assigned to this role -->
+      {% set users_in_role = role_users_map[rk] %}
+      {% if users_in_role %}
+      <div class="table-wrap" style="margin-bottom:var(--sp-4);">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Assigned By</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ura in users_in_role %}
+            <tr>
+              <td>{{ ura.user_name }} <span style="color:var(--slate-400);font-size:var(--text-xs);">({{ ura.emp_id }})</span></td>
+              <td style="font-size:var(--text-sm);color:var(--slate-500);">{{ ura.user_email }}</td>
+              <td style="font-size:var(--text-sm);color:var(--slate-500);">{{ ura.assigned_by_name or '\u2014' }}</td>
+              <td style="text-align:right;">
+                <form method="POST" style="display:inline;">
+                  <input type="hidden" name="action" value="revoke_role">
+                  <input type="hidden" name="emp_id" value="{{ ura.emp_id }}">
+                  <input type="hidden" name="role_key" value="{{ rk }}">
+                  <button type="submit" class="btn btn-secondary btn-sm"
+                          onclick="return confirm('Remove {{ ura.user_name }} from {{ label }}?')"
+                          style="color:var(--red-600);">
+                    Remove
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--slate-400);font-size:var(--text-sm);margin-bottom:var(--sp-4);padding:var(--sp-3);background:var(--slate-50);border-radius:var(--radius-md);">
+        No users assigned to <strong>{{ label }}</strong> yet.
+      </p>
+      {% endif %}
+
+      <!-- Add user to this role -->
+      <form method="POST" style="display:flex;gap:var(--sp-3);align-items:flex-end;flex-wrap:wrap;border-top:1px solid var(--slate-100);padding-top:var(--sp-3);">
+        <input type="hidden" name="action" value="assign_role">
+        <input type="hidden" name="role_key" value="{{ rk }}">
+        <div style="flex:1;min-width:240px;">
+          <label class="form-label">Add User to {{ label }}</label>
+          <select name="emp_id" class="form-select" required>
+            <option value="">Select user\u2026</option>
+            {% for u in all_users %}
+              {% if u.EmpID not in role_assigned_ids[rk] %}
+              <option value="{{ u.EmpID }}">{{ u.FirstName }} {{ u.LastName }} ({{ u.EmpID }})</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Add to {{ label }}</button>
+      </form>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Group Access -->
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);margin-bottom:var(--sp-6);">
+    <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Group Access</h2>
+    {% if all_groups %}
+    <form method="POST">
+      <input type="hidden" name="action" value="save_groups">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-4);">
+        {% for g in all_groups %}
+        <label style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3);border:1px solid var(--slate-200);border-radius:var(--radius-md);cursor:pointer;">
+          <input type="checkbox" name="group_{{ g.id }}" value="1" {{ 'checked' if group_access_map.get(g.id, True) }}>
+          <span style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-700);">{{ g.GroupName }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Save Group Access</button>
+    </form>
+    {% else %}
+    <p style="color:var(--slate-400);font-size:var(--text-sm);">No access groups defined.</p>
+    {% endif %}
+  </div>
+
+  <!-- Per-User Access -->
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
+    <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Per-User Overrides</h2>
+    
+    <!-- Existing overrides -->
+    {% if user_access %}
+    <div class="table-wrap" style="margin-bottom:var(--sp-4);">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th style="text-align:center;">Enabled</th>
+            <th style="text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ua in user_access %}
+          <tr>
+            <td>{{ ua.user_name }} (ID: {{ ua.emp_id }})</td>
+            <td style="text-align:center;">
+              {% if ua.is_enabled %}
+                <span class="badge badge--green">Yes</span>
+              {% else %}
+                <span class="badge badge--red">No</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;">
+              <form method="POST" style="display:inline;">
+                <input type="hidden" name="action" value="save_user">
+                <input type="hidden" name="emp_id" value="{{ ua.emp_id }}">
+                <input type="hidden" name="user_enabled" value="{{ '0' if ua.is_enabled else '1' }}">
+                <button type="submit" class="btn btn-secondary btn-sm">
+                  {{ 'Disable' if ua.is_enabled else 'Enable' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Add user override -->
+    <form method="POST" style="display:flex;gap:var(--sp-3);align-items:flex-end;border-top:1px solid var(--slate-100);padding-top:var(--sp-4);">
+      <input type="hidden" name="action" value="save_user">
+      <div style="flex:1;">
+        <label class="form-label">Add User Override</label>
+        <select name="emp_id" class="form-select" required>
+          <option value="">Select user…</option>
+          {% for u in all_users %}
+          <option value="{{ u.EmpID }}">{{ u.FirstName }} {{ u.LastName }} ({{ u.EmpID }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Access</label>
+        <select name="user_enabled" class="form-select">
+          <option value="0">Disabled</option>
+          <option value="1">Enabled</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Add Override</button>
+    </form>
+  </div>
+
+  <div style="margin-top:var(--sp-4);">
+    <a href="{{ url_for('admin_settings.modules') }}" class="btn btn-secondary">&larr; Back to Modules</a>
+  </div>
+</div>
+
+<style>
+.role-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--slate-600);
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.role-tab:hover { background: var(--slate-100); }
+.role-tab--active {
+  background: var(--brand-600, #006633);
+  color: #fff;
+  border-color: var(--brand-600, #006633);
+}
+.role-tab--active:hover { background: var(--brand-700, #005528); }
+.role-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+  color: inherit;
+}
+.role-tab--active .role-tab__count {
+  background: rgba(255,255,255,.25);
+}
+</style>
+
+<script>
+setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+
+function switchRoleTab(roleKey) {
+  // Update tabs
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('role-tab--active'));
+  document.querySelector(`.role-tab[data-role="${roleKey}"]`).classList.add('role-tab--active');
+  // Update panels
+  document.querySelectorAll('.role-panel').forEach(p => p.style.display = 'none');
+  document.getElementById(`panel_${roleKey}`).style.display = '';
+}
+
+/* ── Searchable Select (shared partial) ───────────── */
+</script>
+
+{% include "delivery_orders/_searchable_select.html" %}
+
+<script>
+/* Initialize searchable selects on user dropdowns */
+function initUserSearchableSelects() {
+  window.initSearchableSelects('select[name="emp_id"]', []);
+}
+initUserSearchableSelects();
+
+/* Re-init after tab switch (panels may have new visible selects) */
+const _origSwitch = switchRoleTab;
+switchRoleTab = function(roleKey) {
+  _origSwitch(roleKey);
+  initUserSearchableSelects();
+};
+</script>
+{% endblock %}

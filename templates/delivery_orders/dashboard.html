@@ -1,0 +1,892 @@
+{% extends "base.html" %}
+{% block title %}Delivery Orders — Dashboard{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Glassmorphism DO Dashboard ─────────────────────────────── */
+
+  /* Soft gradient background for the content area */
+  .do-dashboard-wrap {
+    min-height: calc(100vh - var(--topbar-h, 64px));
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f5f9 25%, #e8f5e9 50%, #f8fafc 75%, #c8e6c9 100%);
+    padding: var(--sp-6, 24px);
+    border-radius: 20px;
+    margin: -24px;
+  }
+
+  /* Glass card base */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 18px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+    padding: 24px;
+    transition: all 0.3s ease;
+  }
+
+  .glass-card:hover {
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Page header */
+  .do-dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .do-dash-header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+  }
+
+  .do-dash-header .breadcrumb {
+    font-size: 13px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .do-dash-header .breadcrumb a {
+    color: #64748b;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .do-dash-header .breadcrumb a:hover {
+    color: #006633;
+  }
+
+  .do-dash-header .breadcrumb .sep {
+    color: #cbd5e1;
+  }
+
+  /* Title bar with icon */
+  .do-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #006633;
+  }
+
+  .do-title-bar svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Action buttons */
+  .do-dash-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .do-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, #006633, #1a7a42);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0, 102, 51, 0.25);
+  }
+
+  .do-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 102, 51, 0.35);
+  }
+
+  .do-btn-primary svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .do-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 22px;
+    background: rgba(255, 255, 255, 0.7);
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .do-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+  }
+
+  .do-btn-outline svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* ── KPI Cards Grid ─────────────────────────────────────────── */
+  .kpi-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 16px;
+    padding: 20px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    display: block;
+  }
+
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .kpi-card__top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+
+  .kpi-card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .kpi-card__icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .kpi-card__info {
+    flex: 1;
+  }
+
+  .kpi-card__value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+    margin-bottom: 4px;
+    letter-spacing: -1px;
+  }
+
+  .kpi-card__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  /* Bottom progress bar */
+  .kpi-card__bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .kpi-card__bar {
+    flex: 1;
+    height: 4px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .kpi-card__bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  .kpi-card__pct {
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+
+  /* KPI color variants */
+  .kpi--total .kpi-card__icon {
+    background: #e8f5e9;
+  }
+
+  .kpi--total .kpi-card__icon svg {
+    stroke: #006633;
+  }
+
+  .kpi--total .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #006633, #1a7a42);
+  }
+
+  .kpi--drafts .kpi-card__icon {
+    background: #f1f5f9;
+  }
+
+  .kpi--drafts .kpi-card__icon svg {
+    stroke: #475569;
+  }
+
+  .kpi--drafts .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #475569, #64748b);
+  }
+
+  .kpi--submitted .kpi-card__icon {
+    background: #fef3c7;
+  }
+
+  .kpi--submitted .kpi-card__icon svg {
+    stroke: #d97706;
+  }
+
+  .kpi--submitted .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #d97706, #fbbf24);
+  }
+
+  .kpi--confirmed .kpi-card__icon {
+    background: #d1fae5;
+  }
+
+  .kpi--confirmed .kpi-card__icon svg {
+    stroke: #059669;
+  }
+
+  .kpi--confirmed .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #059669, #34d399);
+  }
+
+  .kpi--customs-updated .kpi-card__icon {
+    background: #e0f2fe;
+  }
+
+  .kpi--customs-updated .kpi-card__icon svg {
+    stroke: #0c4a6e;
+  }
+
+  .kpi--customs-updated .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+  }
+
+  .kpi--delivered .kpi-card__icon {
+    background: #d1fae5;
+  }
+
+  .kpi--delivered .kpi-card__icon svg {
+    stroke: #065f46;
+  }
+
+  .kpi--delivered .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #065f46, #10b981);
+  }
+
+  .kpi--price-agreed .kpi-card__icon {
+    background: #e8f5e9;
+  }
+
+  .kpi--price-agreed .kpi-card__icon svg {
+    stroke: #006633;
+  }
+
+  .kpi--price-agreed .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #006633, #1a7a42);
+  }
+
+  .kpi--need-attach .kpi-card__icon {
+    background: #fef9c3;
+  }
+
+  .kpi--need-attach .kpi-card__icon svg {
+    stroke: #ca8a04;
+  }
+
+  .kpi--need-attach .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #ca8a04, #facc15);
+  }
+
+  /* ── Overview Section ───────────────────────────────────────── */
+  .overview-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 14px;
+    padding-left: 2px;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .overview-stat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 14px;
+    padding: 18px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.2s ease;
+  }
+
+  .overview-stat:hover {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .overview-stat__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .overview-stat__icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .overview-stat__icon--red {
+    background: #fee2e2;
+  }
+
+  .overview-stat__icon--red svg {
+    stroke: #dc2626;
+  }
+
+  .overview-stat__icon--amber {
+    background: #fef3c7;
+  }
+
+  .overview-stat__icon--amber svg {
+    stroke: #d97706;
+  }
+
+  .overview-stat__info {}
+
+  .overview-stat__value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+    margin-bottom: 2px;
+    letter-spacing: -0.5px;
+  }
+
+  .overview-stat__label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  .overview-stat__pct {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+
+  /* ── Management Section ─────────────────────────────────────── */
+  .mgmt-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .mgmt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    transition: all 0.25s ease;
+    min-width: 140px;
+  }
+
+  .mgmt-btn:hover {
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: #006633;
+    color: #006633;
+  }
+
+  .mgmt-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Section spacing */
+  .do-section {
+    margin-bottom: 24px;
+  }
+
+  /* Logo banner */
+  .dash-logo-banner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 28px;
+    margin-bottom: 24px;
+  }
+
+  .dash-logo-banner__icon {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
+  }
+
+  .dash-logo-banner__icon img {
+    height: 64px;
+    width: auto;
+  }
+
+  .dash-logo-banner__title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #005528;
+    letter-spacing: -0.3px;
+  }
+
+  .dash-logo-banner__sub {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 640px) {
+    .do-dashboard-wrap {
+      padding: 16px;
+      margin: -16px;
+      border-radius: 12px;
+    }
+
+    .kpi-cards-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .kpi-card__value {
+      font-size: 24px;
+    }
+
+    .do-dash-header {
+      flex-direction: column;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="do-dashboard-wrap">
+
+  <!-- Company Logo Banner -->
+  <div class="dash-logo-banner glass-card">
+    <div class="dash-logo-banner__icon">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Al Wahdania">
+    </div>
+    <div>
+      <div class="dash-logo-banner__title">Al Wahdania General Trading Co. LLC</div>
+      <div class="dash-logo-banner__sub">Fujairah Branch &mdash; Delivery Orders Management</div>
+    </div>
+  </div>
+
+  <!-- Title Bar -->
+  <div class="do-title-bar">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+    </svg>
+    Delivery Orders
+  </div>
+
+  <!-- Page Header -->
+  <div class="do-dash-header">
+    <div>
+      <h1>Delivery Orders</h1>
+      <div class="breadcrumb">
+        <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+        <span class="sep">&bull;</span>
+        <a href="{{ url_for('webapp.index') }}">Web Application</a>
+        <span class="sep">&bull;</span>
+        <span>Delivery Orders</span>
+      </div>
+    </div>
+    {% if has_any_order_role %}
+    <div class="do-dash-actions">
+      {% if can_create %}
+      <a href="{{ url_for('delivery_orders.create_form') }}" class="do-btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        New Order
+      </a>
+      {% endif %}
+      <a href="{{ url_for('delivery_orders.order_list') }}" class="do-btn-outline">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        View Orders
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if has_any_order_role %}
+  <!-- KPI Cards -->
+  {% set total = stats.total or 0 %}
+  {% set safe_total = total if total > 0 else 1 %}
+  <div class="kpi-cards-grid">
+
+    <!-- Total Orders -->
+    <a href="{{ url_for('delivery_orders.order_list', status='ALL') }}" class="kpi-card kpi--total">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ total }}</div>
+          <div class="kpi-card__label">Total Orders</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:100%;"></div>
+        </div>
+        <span class="kpi-card__pct">100%</span>
+      </div>
+    </a>
+
+    <!-- Draft Orders -->
+    {% set drafts = stats.drafts or 0 %}
+    {% set drafts_pct = ((drafts / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='DRAFT') }}" class="kpi-card kpi--drafts">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ drafts }}</div>
+          <div class="kpi-card__label">Draft Orders</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ drafts_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ drafts_pct }}%</span>
+      </div>
+    </a>
+
+    <!-- Submitted Orders -->
+    {% set submitted = stats.submitted or 0 %}
+    {% set submitted_pct = ((submitted / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='SUBMITTED') }}" class="kpi-card kpi--submitted">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ submitted }}</div>
+          <div class="kpi-card__label">Submitted Orders</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ submitted_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ submitted_pct }}%</span>
+      </div>
+    </a>
+
+    <!-- Confirmed Orders -->
+    {% set confirmed = stats.confirmed or 0 %}
+    {% set confirmed_pct = ((confirmed / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='CONFIRMED') }}" class="kpi-card kpi--confirmed">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ confirmed }}</div>
+          <div class="kpi-card__label">Confirmed Orders</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ confirmed_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ confirmed_pct }}%</span>
+      </div>
+    </a>
+
+    <!-- Customs Document Updated -->
+    {% set customs_updated = stats.customs_updated or 0 %}
+    {% set customs_pct = ((customs_updated / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='CUSTOMS DOCUMENT UPDATED') }}"
+      class="kpi-card kpi--customs-updated">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ customs_updated }}</div>
+          <div class="kpi-card__label">Customs Updated</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ customs_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ customs_pct }}%</span>
+      </div>
+    </a>
+
+    <!-- Delivered -->
+    {% set delivered = stats.delivered or 0 %}
+    {% set delivered_pct = ((delivered / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='DELIVERED') }}" class="kpi-card kpi--delivered">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.747L14.456 4.67a.75.75 0 00-.585-.279H11.25m-8.25 14.5v-6.75a.75.75 0 01.75-.75h4.5a.75.75 0 01.75.75v6.75m-6 0h6" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ delivered }}</div>
+          <div class="kpi-card__label">Delivered</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ delivered_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ delivered_pct }}%</span>
+      </div>
+    </a>
+
+    {% if is_do_admin or is_do_finance or is_do_logistics %}
+    <!-- Price Agreed -->
+    {% set price_agreed = stats.price_agreed or 0 %}
+    {% set price_pct = ((price_agreed / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='PRICE AGREED') }}" class="kpi-card kpi--price-agreed">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ price_agreed }}</div>
+          <div class="kpi-card__label">Price Agreed</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ price_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ price_pct }}%</span>
+      </div>
+    </a>
+
+    <!-- Need Attachment -->
+    {% set need_attach = stats.need_attach or 0 %}
+    {% set attach_pct = ((need_attach / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='NEED ATTACHMENT') }}" class="kpi-card kpi--need-attach">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ need_attach }}</div>
+          <div class="kpi-card__label">Need Attach</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ attach_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ attach_pct }}%</span>
+      </div>
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Overview Section -->
+  <div class="do-section">
+    <div class="glass-card">
+      <div class="overview-title">Overview</div>
+      <div class="overview-grid">
+        <div class="overview-stat">
+          <div class="overview-stat__icon overview-stat__icon--red">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div class="overview-stat__info">
+            <div class="overview-stat__value">{{ stats.rejected or 0 }}</div>
+            <div class="overview-stat__label">Rejected</div>
+          </div>
+          {% set rejected = stats.rejected or 0 %}
+          {% set rej_pct = ((rejected / safe_total) * 100)|round|int %}
+          <span class="overview-stat__pct">{{ rej_pct }}% &rsaquo;</span>
+        </div>
+        <div class="overview-stat">
+          <div class="overview-stat__icon overview-stat__icon--amber">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <div class="overview-stat__info">
+            <div class="overview-stat__value">{{ stats.cancelled or 0 }}</div>
+            <div class="overview-stat__label">Cancelled</div>
+          </div>
+          {% set cancelled = stats.cancelled or 0 %}
+          {% set can_pct = ((cancelled / safe_total) * 100)|round|int %}
+          <span class="overview-stat__pct">{{ can_pct }}% &rsaquo;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}{# end has_any_order_role #}
+
+  <!-- Management Section (role-gated per button) -->
+  {% if has_any_management_role %}
+  <div class="do-section">
+    <div class="glass-card">
+      <div class="overview-title">Management</div>
+      <div class="mgmt-grid">
+        {% if can_manage_products %}
+        <a href="{{ url_for('do_management.products') }}" class="mgmt-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+          </svg>
+          Products
+        </a>
+        {% endif %}
+        {% if can_manage_customers %}
+        <a href="{{ url_for('do_management.customers') }}" class="mgmt-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+          </svg>
+          Customers
+        </a>
+        {% endif %}
+        {% if can_manage_grms %}
+        <a href="{{ url_for('do_management.grms_list') }}" class="mgmt-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+          </svg>
+          GRMS
+        </a>
+        {% endif %}
+        {% if can_manage_reports %}
+        <a href="{{ url_for('do_management.reports') }}" class="mgmt-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+          Reports
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Document Management System{% endblock %}
+
+{% block head %}
+<style>
+.dept-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-5);
+  margin-top: var(--sp-6);
+}
+.dept-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6);
+  transition: all .2s var(--ease);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.dept-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.dept-card__icon {
+  width: 48px; height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #1a7a42, #005528);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--white);
+  margin-bottom: var(--sp-3);
+}
+.dept-card__name {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--slate-900);
+  margin-bottom: var(--sp-2);
+}
+.dept-card__stats {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  font-size: var(--text-xs);
+  color: var(--slate-500);
+}
+.dept-card__stat {
+  display: flex; align-items: center; gap: 4px;
+}
+.dept-card__stat-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.dept-card__stat-dot--total    { background: #64748b; }
+.dept-card__stat-dot--draft    { background: #64748b; }
+.dept-card__stat-dot--finalized { background: #22c55e; }
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.kpi-bubble {
+  text-align: center;
+  padding: var(--sp-4);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+}
+.kpi-bubble__circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto var(--sp-2);
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--white);
+}
+.kpi-bubble__label { font-size: var(--text-xs); font-weight: var(--font-semibold); color: var(--slate-600); }
+.kpi--total     .kpi-bubble__circle { background: linear-gradient(135deg, #475569, #64748b); }
+.kpi--draft     .kpi-bubble__circle { background: linear-gradient(135deg, #475569, #64748b); }
+.kpi--submitted .kpi-bubble__circle { background: linear-gradient(135deg, #b91c1c, #dc2626); }
+.kpi--approved  .kpi-bubble__circle { background: linear-gradient(135deg, #006633, #1a7a42); }
+.kpi--finalized .kpi-bubble__circle { background: linear-gradient(135deg, #15803d, #22c55e); }
+.kpi--rejected  .kpi-bubble__circle { background: linear-gradient(135deg, #dc2626, #ef4444); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Document Management System</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <span>Documents</span>
+    </div>
+  </div>
+  {% if permissions.is_itadmin %}
+  <a href="{{ url_for('dms.admin_config') }}" class="btn btn-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    Admin Config
+  </a>
+  {% endif %}
+</div>
+
+<!-- KPI overview -->
+<div class="kpi-grid">
+  <div class="kpi-bubble kpi--total">
+    <div class="kpi-bubble__circle">{{ stats.total|default(0) }}</div>
+    <div class="kpi-bubble__label">Total</div>
+  </div>
+  <div class="kpi-bubble kpi--draft">
+    <div class="kpi-bubble__circle">{{ stats.draft|default(0) }}</div>
+    <div class="kpi-bubble__label">Draft</div>
+  </div>
+  <div class="kpi-bubble kpi--submitted">
+    <div class="kpi-bubble__circle">{{ stats.submitted|default(0) }}</div>
+    <div class="kpi-bubble__label">Submitted</div>
+  </div>
+  <div class="kpi-bubble kpi--approved">
+    <div class="kpi-bubble__circle">{{ stats.approved|default(0) }}</div>
+    <div class="kpi-bubble__label">Approved</div>
+  </div>
+  <div class="kpi-bubble kpi--finalized">
+    <div class="kpi-bubble__circle">{{ stats.finalized|default(0) }}</div>
+    <div class="kpi-bubble__label">Finalized</div>
+  </div>
+  <div class="kpi-bubble kpi--rejected">
+    <div class="kpi-bubble__circle">{{ stats.rejected|default(0) }}</div>
+    <div class="kpi-bubble__label">Rejected</div>
+  </div>
+</div>
+
+<!-- Department cards -->
+<h2 style="font-size: var(--text-lg); margin-bottom: var(--sp-2);">Select Department</h2>
+<div class="dept-grid">
+  {% for dept in departments %}
+  <a href="{{ url_for('dms.document_list', dept_id=dept.id) }}" class="dept-card" data-testid="dept-card">
+    <div class="dept-card__icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
+    </div>
+    <div class="dept-card__name">{{ dept.Name }}</div>
+    <div class="dept-card__stats">
+      <span class="dept-card__stat"><span class="dept-card__stat-dot dept-card__stat-dot--total"></span> {{ dept.stats.total|default(0) }} total</span>
+      <span class="dept-card__stat"><span class="dept-card__stat-dot dept-card__stat-dot--draft"></span> {{ dept.stats.draft|default(0) }} draft</span>
+      <span class="dept-card__stat"><span class="dept-card__stat-dot dept-card__stat-dot--finalized"></span> {{ dept.stats.finalized|default(0) }} finalized</span>
+    </div>
+  </a>
+  {% endfor %}
+
+  {% if not departments %}
+  <div class="card" style="grid-column: 1/-1; text-align:center; padding: var(--sp-8);">
+    <p style="color: var(--slate-500);">No departments available. Contact an administrator.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

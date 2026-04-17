@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Receipt {{ receipt.Receipt_Number }} — GRMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Receipt — {{ receipt.Receipt_Number }}
+    {% set st = receipt.Status|lower %}
+    <span class="badge {% if st == 'confirmed' %}badge--green{% elif st == 'submitted' %}badge--brand{% elif st == 'draft' %}badge--slate{% elif st == 'cancelled' %}badge--red{% else %}badge--amber{% endif %}" style="margin-left:var(--sp-3);vertical-align:middle;">{{ receipt.Status }}</span>
+  </h1>
+</div>
+
+<div class="card" style="max-width:700px;margin-bottom:var(--sp-5);">
+  <div class="card__body">
+    <dl class="detail-grid">
+      <dt>PO Number</dt>
+      <dd>{{ receipt.PO_Number }}</dd>
+
+      <dt>On Behalf Of</dt>
+      <dd>{{ receipt.on_behalf_of_name or '—' }}</dd>
+
+      <dt>Received On</dt>
+      <dd>{{ receipt.Received_On or '—' }}</dd>
+
+      <dt>SAP Material Doc</dt>
+      <dd>{{ receipt.SAP_Material_Document_Number or '—' }}</dd>
+
+      <dt>FTA Declaration</dt>
+      <dd>{{ receipt.FTA_Declaration_Number or '—' }}</dd>
+
+      <dt>Remarks</dt>
+      <dd>{{ receipt.Remarks or '—' }}</dd>
+
+      <dt>Created By</dt>
+      <dd>{{ receipt.creator_first or '—' }}</dd>
+    </dl>
+  </div>
+</div>
+
+<!-- Receipt Items -->
+<div class="card">
+  <div class="card__header">
+    <span class="card__title">Items</span>
+  </div>
+  <div class="card__body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product ID</th>
+            <th>Product Name</th>
+            <th>UOM</th>
+            <th>Quantity</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in receipt.items %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ item.Product_ID }}</td>
+            <td>{{ item.product_name or '—' }}</td>
+            <td>{{ item.uom or '—' }}</td>
+            <td>{{ item.Quantity }}</td>
+            <td>{{ item.Remarks or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="color:var(--slate-400);">No items on this receipt.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:var(--sp-4);">
+  <a href="{{ url_for('do_management.grms_list') }}" class="btn btn-secondary">
+    &larr; Back to GRMS
+  </a>
+</div>
+{% endblock %}

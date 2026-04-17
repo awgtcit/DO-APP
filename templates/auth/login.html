@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Login — Intranet Portal{% endblock %}
+
+{% block layout %}
+<div class="login-page">
+  <div class="login-card">
+    <div style="text-align:center; margin-bottom: var(--sp-6);">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Al Wahdania" style="height:90px; width:auto;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--slate-500); margin-top:8px;">Al Wahdania General Trading Co. LLC</div>
+    </div>
+    <h1>Welcome Back</h1>
+    <p class="subtitle">Sign in to your Intranet account</p>
+
+    <form method="POST" action="{{ url_for('auth.login_post') }}" novalidate>
+      <div class="form-group">
+        <label for="username" class="form-label">Username or Email</label>
+        <input type="text" id="username" name="username" class="form-input"
+               value="{{ username | default('', true) }}"
+               placeholder="john.doe@company.com" autofocus required>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" id="password" name="password" class="form-input"
+               placeholder="Enter your password" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top: var(--sp-4);">
+        Sign In
+      </button>
+    </form>
+
+    <p style="text-align:center; margin-top: var(--sp-6); font-size: var(--text-xs); color: var(--slate-400);">
+      Protected system &middot; Authorized personnel only
+    </p>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="toast-container">
+  {% for category, message in messages %}
+  <div class="toast toast--{{ category }}">
+    <span>{{ message }}</span>
+    <button class="toast__close" aria-label="Close">&times;</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

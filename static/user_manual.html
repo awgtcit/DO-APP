@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DoApp — Complete User Guide v4.0</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 16mm 20mm 16mm;
+        }
+
+        @media print {
+            body {
+                font-size: 10pt;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+
+            h1,
+            h2 {
+                page-break-after: avoid;
+            }
+
+            table,
+            figure,
+            .step-box {
+                page-break-inside: avoid;
+            }
+
+            a {
+                text-decoration: none;
+                color: #006633 !important;
+            }
+
+            .screenshot-frame {
+                box-shadow: none !important;
+                border: 1px solid #ccc !important;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1e293b;
+            line-height: 1.65;
+            font-size: 11pt;
+            background: #f8fafc;
+        }
+
+        .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 36px 44px;
+            background: #fff;
+            box-shadow: 0 0 40px rgba(0, 0, 0, .08);
+        }
+
+        /* Cover */
+        .cover {
+            text-align: center;
+            padding: 70px 0 40px;
+            border-bottom: 4px solid #006633;
+            margin-bottom: 36px;
+        }
+
+        .cover .logo-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .cover .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: #006633;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .cover .brand {
+            font-size: 20pt;
+            font-weight: 700;
+            color: #006633;
+        }
+
+        .cover h1 {
+            font-size: 26pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .cover .subtitle {
+            font-size: 13pt;
+            color: #64748b;
+            margin-bottom: 36px;
+        }
+
+        .cover .meta {
+            font-size: 9.5pt;
+            color: #94a3b8;
+        }
+
+        .cover .meta span {
+            margin: 0 10px;
+        }
+
+        .cover .version {
+            display: inline-block;
+            background: #006633;
+            color: #fff;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-size: 10pt;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        /* TOC */
+        .toc {
+            margin-bottom: 36px;
+            padding: 26px 32px;
+            background: #f0fdf4;
+            border-radius: 10px;
+            border-left: 5px solid #006633;
+        }
+
+        .toc h2 {
+            font-size: 15pt;
+            color: #006633;
+            margin-bottom: 14px;
+            font-weight: 700;
+        }
+
+        .toc ol {
+            list-style: none;
+            counter-reset: toc;
+            padding: 0;
+        }
+
+        .toc>ol>li {
+            counter-increment: toc;
+            margin-bottom: 5px;
+        }
+
+        .toc>ol>li::before {
+            content: counter(toc) ".";
+            font-weight: 700;
+            color: #006633;
+            margin-right: 8px;
+            min-width: 22px;
+            display: inline-block;
+        }
+
+        .toc a {
+            color: #1e293b;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .toc .sub {
+            margin-left: 28px;
+            margin-top: 2px;
+        }
+
+        .toc .sub li {
+            font-size: 9pt;
+            color: #64748b;
+            margin-bottom: 1px;
+        }
+
+        .toc .sub a {
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        /* Headings */
+        h2 {
+            font-size: 17pt;
+            color: #006633;
+            margin: 36px 0 14px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 700;
+        }
+
+        h3 {
+            font-size: 13pt;
+            color: #15803d;
+            margin: 22px 0 10px;
+            font-weight: 600;
+        }
+
+        h4 {
+            font-size: 11.5pt;
+            color: #1e293b;
+            margin: 16px 0 8px;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 10px;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 14px 0 20px;
+            font-size: 9.5pt;
+        }
+
+        th {
+            background: #006633;
+            color: #fff;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 9pt;
+        }
+
+        td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        .field-table th:first-child {
+            width: 28%;
+        }
+
+        /* Step boxes */
+        .step-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 12px 0 16px;
+        }
+
+        .step-box .step-num {
+            display: inline-block;
+            background: #006633;
+            color: #fff;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 26px;
+            font-weight: 700;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+
+        .step-box .step-title {
+            font-weight: 600;
+            color: #15803d;
+            font-size: 11pt;
+        }
+
+        .step-box p {
+            margin: 6px 0 0 34px;
+            font-size: 10pt;
+            color: #334155;
+        }
+
+        /* Workflow diagram */
+        .wf-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            align-items: center;
+            justify-content: center;
+            margin: 18px 0 24px;
+        }
+
+        .wf-node {
+            background: #006633;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 9pt;
+            font-weight: 600;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .wf-node.draft {
+            background: #64748b;
+        }
+
+        .wf-node.submitted {
+            background: #0ea5e9;
+        }
+
+        .wf-node.price {
+            background: #006633;
+        }
+
+        .wf-node.confirmed {
+            background: #15803d;
+        }
+
+        .wf-node.customs {
+            background: #0284c7;
+        }
+
+        .wf-node.delivered {
+            background: #059669;
+        }
+
+        .wf-node.rejected {
+            background: #dc2626;
+        }
+
+        .wf-node.cancelled {
+            background: #ea580c;
+        }
+
+        .wf-node.need-attach {
+            background: #ca8a04;
+        }
+
+        .wf-arrow {
+            font-size: 18px;
+            color: #006633;
+            margin: 0 4px;
+            font-weight: 700;
+        }
+
+        /* Screenshots */
+        .screenshot-frame {
+            display: block;
+            max-width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+            margin: 12px auto 18px;
+        }
+
+        .caption {
+            text-align: center;
+            font-size: 9pt;
+            color: #64748b;
+            font-style: italic;
+            margin: -10px 0 18px;
+        }
+
+        /* Info boxes */
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .warn-box {
+            background: #fefce8;
+            border-left: 4px solid #eab308;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        .tip-box {
+            background: #f0fdf4;
+            border-left: 4px solid #22c55e;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 10pt;
+        }
+
+        /* Role badges */
+        .role {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 8.5pt;
+            font-weight: 600;
+        }
+
+        .role-admin {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .role-creator {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .role-finance {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .role-logistics {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Status badges */
+        .status {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 14px;
+            font-size: 8.5pt;
+            font-weight: 600;
+        }
+
+        .st-draft {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .st-submitted {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .st-price {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .st-confirmed {
+            background: #bbf7d0;
+            color: #166534;
+        }
+
+        .st-customs {
+            background: #bae6fd;
+            color: #0c4a6e;
+        }
+
+        .st-delivered {
+            background: #a7f3d0;
+            color: #064e3b;
+        }
+
+        .st-rejected {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .st-cancelled {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        .st-need {
+            background: #fef08a;
+            color: #854d0e;
+        }
+
+        /* Quick ref */
+        .qr-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        .qr-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+
+        .qr-card h4 {
+            margin: 0 0 6px;
+            font-size: 10pt;
+            color: #006633;
+        }
+
+        .qr-card p {
+            font-size: 9pt;
+            color: #475569;
+            margin: 0;
+        }
+
+        ul,
+        ol {
+            margin: 8px 0 14px 24px;
+        }
+
+        li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- COVER PAGE -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="cover">
+            <div class="logo-bar">
+                <div class="logo-icon">W</div>
+                <div class="brand">Al Wahdania General Trading Co. LLC</div>
+            </div>
+            <h1>Delivery Orders Application</h1>
+            <p class="subtitle">Complete Step-by-Step User Guide</p>
+            <p class="subtitle" style="font-size:11pt;color:#475569;">Fujairah Branch — Delivery Orders Management
+                System</p>
+            <div class="meta">
+                <span>Version 4.0</span> |
+                <span>April 2026</span> |
+                <span>Confidential — Internal Use Only</span>
+            </div>
+            <div class="version">v4.0 — Complete Workflow Guide</div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TABLE OF CONTENTS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ol>
+                <li><a href="#overview">System Overview</a>
+                    <ul class="sub">
+                        <li><a href="#roles">User Roles &amp; Permissions</a></li>
+                        <li><a href="#workflow">Workflow Diagram</a></li>
+                    </ul>
+                </li>
+                <li><a href="#login">Logging In</a></li>
+                <li><a href="#dashboard">Dashboard &amp; KPI Cards</a></li>
+                <li><a href="#products">Step 1 — Product Management</a>
+                    <ul class="sub">
+                        <li><a href="#product-list">View Products</a></li>
+                        <li><a href="#product-create">Create a Product</a></li>
+                    </ul>
+                </li>
+                <li><a href="#customers">Step 2 — Customer Management</a>
+                    <ul class="sub">
+                        <li><a href="#customer-list">View Customers</a></li>
+                        <li><a href="#customer-create">Create a Customer</a></li>
+                    </ul>
+                </li>
+                <li><a href="#create-do">Step 3 — Create a Delivery Order</a>
+                    <ul class="sub">
+                        <li><a href="#do-fields">Form Fields Reference</a></li>
+                        <li><a href="#do-items">Adding Line Items</a></li>
+                    </ul>
+                </li>
+                <li><a href="#submit-do">Step 4 — Submit Order (DRAFT → SUBMITTED)</a></li>
+                <li><a href="#price-agreed">Step 5 — Finance Review (SUBMITTED → PRICE AGREED)</a></li>
+                <li><a href="#confirmed">Step 6 — Logistics Confirmation (PRICE AGREED → CONFIRMED)</a></li>
+                <li><a href="#customs">Step 7 — Customs Document Update (CONFIRMED → CUSTOMS UPDATED)</a></li>
+                <li><a href="#delivered">Step 8 — Mark as Delivered (CUSTOMS UPDATED → DELIVERED)</a></li>
+                <li><a href="#rejection">Rejection &amp; Need Attachment Flows</a></li>
+                <li><a href="#orderlist">Order List &amp; Filtering</a></li>
+                <li><a href="#print">Print View &amp; PDF Export</a></li>
+                <li><a href="#grms">GRMS</a></li>
+                <li><a href="#reports">Reports</a></li>
+                <li><a href="#admin">Admin Settings</a>
+                    <ul class="sub">
+                        <li><a href="#admin-users">User Management</a></li>
+                        <li><a href="#admin-modules">Module Configuration</a></li>
+                        <li><a href="#admin-workflow">Workflow Editor</a></li>
+                    </ul>
+                </li>
+                <li><a href="#faq">FAQ &amp; Troubleshooting</a></li>
+                <li><a href="#quickref">Quick Reference Card</a></li>
+            </ol>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 1. SYSTEM OVERVIEW -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="overview">1. System Overview</h2>
+        <p>The <strong>Delivery Orders Application (DoApp)</strong> is an internal web-based system used by Al Wahdania
+            General Trading Co. LLC, Fujairah Branch, to manage the complete lifecycle of delivery orders — from
+            creation through to final delivery confirmation.</p>
+
+        <h3 id="roles">1.1 User Roles &amp; Permissions</h3>
+        <table>
+            <tr>
+                <th>Role</th>
+                <th>Badge</th>
+                <th>Key Permissions</th>
+            </tr>
+            <tr>
+                <td><strong>Admin</strong></td>
+                <td><span class="role role-admin">Admin</span></td>
+                <td>Full access — create/edit/delete orders, manage products, customers, users, modules, workflow. Can
+                    perform all transitions.</td>
+            </tr>
+            <tr>
+                <td><strong>Creator (Sales)</strong></td>
+                <td><span class="role role-creator">Creator</span></td>
+                <td>Create &amp; edit draft orders, submit orders, add line items, upload delivery documents (mark as
+                    DELIVERED).</td>
+            </tr>
+            <tr>
+                <td><strong>Finance</strong></td>
+                <td><span class="role role-finance">Finance</span></td>
+                <td>Review submitted orders: approve (PRICE AGREED), reject, or request attachments (NEED ATTACHMENT).
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Logistics</strong></td>
+                <td><span class="role role-logistics">Logistics</span></td>
+                <td>Confirm price-agreed orders, upload customs documents (CUSTOMS DOCUMENT UPDATED).</td>
+            </tr>
+        </table>
+
+        <h3 id="workflow">1.2 Complete Workflow Diagram</h3>
+        <p>Every delivery order follows this lifecycle path:</p>
+
+        <div class="wf-flow">
+            <div class="wf-node draft">DRAFT</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node submitted">SUBMITTED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node price">PRICE AGREED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node confirmed">CONFIRMED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node customs">CUSTOMS UPDATED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node delivered">DELIVERED</div>
+        </div>
+
+        <p style="text-align:center;font-size:9.5pt;color:#64748b;margin-bottom:6px;">Alternative paths:</p>
+        <div class="wf-flow" style="margin-top:4px;">
+            <div class="wf-node submitted">SUBMITTED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node rejected">REJECTED</div>
+            <span style="margin:0 12px;color:#64748b;">|</span>
+            <div class="wf-node submitted">SUBMITTED</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node need-attach">NEED ATTACH</div>
+            <span style="margin:0 12px;color:#64748b;">|</span>
+            <div class="wf-node draft">DRAFT</div>
+            <span class="wf-arrow">→</span>
+            <div class="wf-node cancelled">CANCELLED</div>
+        </div>
+
+        <table style="margin-top:18px;">
+            <tr>
+                <th>Transition</th>
+                <th>From Status</th>
+                <th>To Status</th>
+                <th>Who Can Do It</th>
+            </tr>
+            <tr>
+                <td>Submit</td>
+                <td><span class="status st-draft">DRAFT</span></td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td><span class="role role-creator">Creator</span> <span class="role role-admin">Admin</span></td>
+            </tr>
+            <tr>
+                <td>Approve Price</td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td><span class="status st-price">PRICE AGREED</span></td>
+                <td><span class="role role-finance">Finance</span></td>
+            </tr>
+            <tr>
+                <td>Reject</td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td><span class="status st-rejected">REJECTED</span></td>
+                <td><span class="role role-finance">Finance</span></td>
+            </tr>
+            <tr>
+                <td>Need Attachment</td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td><span class="status st-need">NEED ATTACHMENT</span></td>
+                <td><span class="role role-finance">Finance</span></td>
+            </tr>
+            <tr>
+                <td>Confirm</td>
+                <td><span class="status st-price">PRICE AGREED</span></td>
+                <td><span class="status st-confirmed">CONFIRMED</span></td>
+                <td><span class="role role-logistics">Logistics</span></td>
+            </tr>
+            <tr>
+                <td>Upload Customs Docs</td>
+                <td><span class="status st-confirmed">CONFIRMED</span></td>
+                <td><span class="status st-customs">CUSTOMS UPDATED</span></td>
+                <td><span class="role role-logistics">Logistics</span></td>
+            </tr>
+            <tr>
+                <td>Mark Delivered</td>
+                <td><span class="status st-customs">CUSTOMS UPDATED</span></td>
+                <td><span class="status st-delivered">DELIVERED</span></td>
+                <td><span class="role role-creator">Creator</span> <span class="role role-admin">Admin</span></td>
+            </tr>
+            <tr>
+                <td>Cancel</td>
+                <td><span class="status st-draft">DRAFT</span></td>
+                <td><span class="status st-cancelled">CANCELLED</span></td>
+                <td><span class="role role-admin">Admin</span></td>
+            </tr>
+            <tr>
+                <td>Revert to Draft</td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td><span class="status st-draft">DRAFT</span></td>
+                <td><span class="role role-creator">Creator</span></td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 2. LOGGING IN -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="login">2. Logging In</h2>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Open the Application</span>
+            <p>Navigate to the DoApp URL in your browser. You will see the login page.</p>
+        </div>
+
+        <img src="screenshots/guide/01_login_page.png" alt="Login Page" class="screenshot-frame">
+        <p class="caption">Figure 2.1 — Login Page</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Enter Your Credentials</span>
+            <p>Enter your <strong>Username</strong> (Active Directory username) and <strong>Password</strong>. Click
+                <strong>Sign In</strong>.</p>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ Note:</strong> If you enter incorrect credentials, an error message will be displayed. Contact IT
+            Support if you are locked out.
+        </div>
+
+        <img src="screenshots/guide/02_login_failed.png" alt="Login Failed" class="screenshot-frame">
+        <p class="caption">Figure 2.2 — Invalid Credentials Error</p>
+
+        <div class="step-box">
+            <span class="step-num">3</span>
+            <span class="step-title">Accept the Security Policy (First Login)</span>
+            <p>On first login, you may be asked to accept the Information Security Policy (ISP). Review and click
+                <strong>Accept</strong> to proceed.</p>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 3. DASHBOARD -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="dashboard">3. Dashboard &amp; KPI Cards</h2>
+        <p>After logging in, you are taken to the <strong>Delivery Orders Dashboard</strong>. This is your central hub
+            showing real-time statistics.</p>
+
+        <img src="screenshots/guide/05_dashboard_full.png" alt="Dashboard" class="screenshot-frame">
+        <p class="caption">Figure 3.1 — Dashboard with KPI Cards</p>
+
+        <h3>KPI Cards Overview</h3>
+        <table>
+            <tr>
+                <th>Card</th>
+                <th>Description</th>
+                <th>Color</th>
+            </tr>
+            <tr>
+                <td><strong>Total Orders</strong></td>
+                <td>Total number of delivery orders in the system</td>
+                <td>Dark green</td>
+            </tr>
+            <tr>
+                <td><strong>Draft Orders</strong></td>
+                <td>Orders still being prepared, not yet submitted</td>
+                <td>Slate/grey</td>
+            </tr>
+            <tr>
+                <td><strong>Submitted Orders</strong></td>
+                <td>Orders submitted and awaiting finance review</td>
+                <td>Sky blue</td>
+            </tr>
+            <tr>
+                <td><strong>Confirmed Orders</strong></td>
+                <td>Orders confirmed by logistics</td>
+                <td>Green</td>
+            </tr>
+            <tr>
+                <td><strong>Customs Updated</strong></td>
+                <td>Orders with customs documents uploaded by logistics</td>
+                <td>Light blue</td>
+            </tr>
+            <tr>
+                <td><strong>Delivered</strong></td>
+                <td>Orders marked as delivered with delivery docs</td>
+                <td>Emerald green</td>
+            </tr>
+            <tr>
+                <td><strong>Price Agreed</strong></td>
+                <td>Orders approved by finance, awaiting logistics</td>
+                <td>Teal</td>
+            </tr>
+            <tr>
+                <td><strong>Need Attach</strong></td>
+                <td>Orders requiring additional attachments</td>
+                <td>Amber/yellow</td>
+            </tr>
+        </table>
+
+        <h3>Dashboard Sections</h3>
+        <ul>
+            <li><strong>+ New Order</strong> — Quick button to create a new delivery order</li>
+            <li><strong>View Orders</strong> — Navigate to the full order list</li>
+            <li><strong>Overview</strong> — Shows Rejected and Cancelled order counts</li>
+            <li><strong>Management</strong> — Quick links to Products, Customers, GRMS, and Reports</li>
+        </ul>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 4. PRODUCTS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="products">4. Step 1 — Product Management</h2>
+        <p>Before creating a delivery order, you need products in the system. Products represent the items that will be
+            included in delivery orders.</p>
+
+        <h3 id="product-list">4.1 View Products</h3>
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Navigate to Products</span>
+            <p>From the Dashboard, click <strong>Products</strong> in the Management section, or go to <strong>Delivery
+                    Orders → Manage → Products</strong>.</p>
+        </div>
+
+        <img src="screenshots/guide/06_products_list.png" alt="Products List" class="screenshot-frame">
+        <p class="caption">Figure 4.1 — Products List Page</p>
+
+        <p>The products list shows all available products with columns for Product ID, Name, UOM (Unit of Measure),
+            Market, and Sales Manager.</p>
+
+        <h3 id="product-create">4.2 Create a Product</h3>
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Click "Create Product"</span>
+            <p>On the Products page, click the <strong>+ Create Product</strong> button to open the creation form.</p>
+        </div>
+
+        <img src="screenshots/guide/07_product_create_form.png" alt="Create Product Form" class="screenshot-frame">
+        <p class="caption">Figure 4.2 — Create Product Form</p>
+
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>Product ID</strong></td>
+                <td>Unique product identifier (alphanumeric code from SAP)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Product Name</strong></td>
+                <td>Full descriptive name of the product</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>UOM</strong></td>
+                <td>Unit of Measure (e.g., MC, KG, PC)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Market</strong></td>
+                <td>Target market for this product</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Sales Manager</strong></td>
+                <td>Assigned sales manager</td>
+                <td>No</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 5. CUSTOMERS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="customers">5. Step 2 — Customer Management</h2>
+        <p>Customers are the Bill To / Ship To parties on delivery orders. You must have at least one customer before
+            creating an order.</p>
+
+        <h3 id="customer-list">5.1 View Customers</h3>
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Navigate to Customers</span>
+            <p>From the Dashboard, click <strong>Customers</strong> in the Management section.</p>
+        </div>
+
+        <img src="screenshots/guide/08_customers_list.png" alt="Customers List" class="screenshot-frame">
+        <p class="caption">Figure 5.1 — Customers List Page</p>
+
+        <h3 id="customer-create">5.2 Create a Customer</h3>
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Click "Create Customer"</span>
+            <p>Click the <strong>+ Create Customer</strong> button and fill in the form.</p>
+        </div>
+
+        <img src="screenshots/guide/09_customer_create_form.png" alt="Customer Form" class="screenshot-frame">
+        <p class="caption">Figure 5.2 — Create Customer Form</p>
+
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>SAP Code</strong></td>
+                <td>Customer code from SAP system</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Customer Name</strong></td>
+                <td>Full legal name of the customer</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Address</strong></td>
+                <td>Complete street address</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Postal Code</strong></td>
+                <td>ZIP/Postal code</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Country (ISO)</strong></td>
+                <td>Two-letter country code (e.g., AE, US, IN)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Region</strong></td>
+                <td>State/Province/Region</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Contact Number</strong></td>
+                <td>Phone number</td>
+                <td>No</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 6. CREATE DELIVERY ORDER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="create-do">6. Step 3 — Create a Delivery Order</h2>
+        <p>This is the core function of the application. A delivery order captures all shipping and billing details for
+            a shipment.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Open the Create Form</span>
+            <p>From the Dashboard, click <strong>+ New Order</strong>, or from the sidebar go to <strong>Delivery
+                    Orders</strong> and click <strong>+ New Order</strong>.</p>
+        </div>
+
+        <img src="screenshots/guide/10_do_create_form_empty.png" alt="Create DO Form" class="screenshot-frame">
+        <p class="caption">Figure 6.1 — Empty Delivery Order Creation Form</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Fill in All Required Fields</span>
+            <p>Complete every field in the form. The PO Number will be auto-generated after saving.</p>
+        </div>
+
+        <h3 id="do-fields">6.1 Form Fields Reference</h3>
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>PO Date</strong></td>
+                <td>Purchase order date (date picker)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>On Behalf Of</strong></td>
+                <td>The entity placing the order (dropdown)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Loading Date</strong></td>
+                <td>Expected loading/shipping date</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Delivery Terms</strong></td>
+                <td>Incoterms (EXW, FOB, CIF, etc.)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Payment Terms</strong></td>
+                <td>Payment conditions (free text, e.g., "Net 30 Days")</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Transportation Mode</strong></td>
+                <td>How goods are transported (by_road, by_sea, by_air)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Bill To</strong></td>
+                <td>Customer to be billed (dropdown of customers)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Ship To</strong></td>
+                <td>Customer receiving the shipment (dropdown)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Point of Exit</strong></td>
+                <td>Port/airport of departure (dropdown)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Point of Discharge</strong></td>
+                <td>Port/airport of arrival (free text)</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Final Destination</strong></td>
+                <td>Ultimate destination (free text)</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Currency</strong></td>
+                <td>Currency for pricing (USD, AED, EUR, etc.)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Notify Party</strong></td>
+                <td>Party to be notified on shipment arrival</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Shipping Agent</strong></td>
+                <td>Freight forwarder or shipping company</td>
+                <td>No</td>
+            </tr>
+        </table>
+
+        <img src="screenshots/guide/11_do_create_form_filled.png" alt="Filled Form" class="screenshot-frame">
+        <p class="caption">Figure 6.2 — Completed Delivery Order Form</p>
+
+        <div class="step-box">
+            <span class="step-num">3</span>
+            <span class="step-title">Save as Draft</span>
+            <p>Click <strong>Save as Draft</strong>. The system creates the order with status <span
+                    class="status st-draft">DRAFT</span> and generates a unique PO Number (e.g., AWTFZC/Apr/26/DO6031).
+                You are redirected to the order detail page.</p>
+        </div>
+
+        <img src="screenshots/guide/12_do_created_detail.png" alt="Created DO" class="screenshot-frame">
+        <p class="caption">Figure 6.3 — Newly Created Delivery Order (DRAFT)</p>
+
+        <h3 id="do-items">6.2 Adding Line Items</h3>
+        <p>After creating the order, add products (line items) to it.</p>
+
+        <div class="step-box">
+            <span class="step-num">4</span>
+            <span class="step-title">Scroll Down to "Add Item"</span>
+            <p>On the order detail page, scroll down to the <strong>Add Item</strong> section.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">5</span>
+            <span class="step-title">Select a Product and Enter Details</span>
+            <p>Choose a product from the dropdown, then enter quantity, unit price, container, truck, and remarks.</p>
+        </div>
+
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>Product</strong></td>
+                <td>Select from the product catalog (dropdown)</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Quantity</strong></td>
+                <td>Number of units</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Unit Price</strong></td>
+                <td>Price per unit in the order's currency</td>
+                <td>Yes</td>
+            </tr>
+            <tr>
+                <td><strong>Container</strong></td>
+                <td>Container number (integer)</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Truck</strong></td>
+                <td>Truck number (integer)</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Load Seq</strong></td>
+                <td>Loading sequence order</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Remarks</strong></td>
+                <td>Additional notes for this line item</td>
+                <td>No</td>
+            </tr>
+        </table>
+
+        <div class="step-box">
+            <span class="step-num">6</span>
+            <span class="step-title">Click "Add"</span>
+            <p>Click the green <strong>Add</strong> button. The item appears in the table below with calculated total
+                amount. You can add multiple items. Use the red delete button to remove items.</p>
+        </div>
+
+        <img src="screenshots/guide/14_do_item_added.png" alt="Item Added" class="screenshot-frame">
+        <p class="caption">Figure 6.4 — Line Item Added Successfully</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 7. SUBMIT ORDER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="submit-do">7. Step 4 — Submit Order</h2>
+        <p><span class="role role-creator">Creator</span> <span class="role role-admin">Admin</span></p>
+        <p>Once the order is complete with all details and line items, submit it for finance review.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Click "Submit"</span>
+            <p>On the order detail page, click the blue <strong>Submit</strong> button in the toolbar. A confirmation
+                dialog appears — click <strong>OK</strong> to confirm.</p>
+        </div>
+
+        <img src="screenshots/guide/15_do_before_submit.png" alt="Before Submit" class="screenshot-frame">
+        <p class="caption">Figure 7.1 — Order Ready to Submit (DRAFT with Submit button)</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Order Status Changes to SUBMITTED</span>
+            <p>The order status updates to <span class="status st-submitted">SUBMITTED</span>. The order is now locked
+                for editing and moves to the Finance team's queue.</p>
+        </div>
+
+        <img src="screenshots/guide/16_do_submitted.png" alt="Submitted" class="screenshot-frame">
+        <p class="caption">Figure 7.2 — Order Successfully Submitted</p>
+
+        <div class="info-box">
+            <strong>ℹ️ Note:</strong> Once submitted, you cannot edit the order. If changes are needed, the Finance team
+            can reject it (returns to DRAFT) or you can use "Revert to Draft" if available.
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 8. FINANCE REVIEW -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="price-agreed">8. Step 5 — Finance Review (PRICE AGREED)</h2>
+        <p><span class="role role-finance">Finance</span></p>
+        <p>The Finance team reviews submitted orders to verify pricing, terms, and completeness.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Log in as Finance User</span>
+            <p>Sign in with your Finance role credentials. Navigate to <strong>Delivery Orders → Orders</strong> or
+                click a Submitted order from the dashboard.</p>
+        </div>
+
+        <img src="screenshots/guide/19_do_finance_view.png" alt="Finance View" class="screenshot-frame">
+        <p class="caption">Figure 8.1 — Finance User Viewing a Submitted Order</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Approve: Click "Price Agreed"</span>
+            <p>If the order is correct, click the green <strong>Price Agreed</strong> button. Confirm in the dialog. The
+                status changes to <span class="status st-price">PRICE AGREED</span>.</p>
+        </div>
+
+        <img src="screenshots/guide/20_do_price_agreed.png" alt="Price Agreed" class="screenshot-frame">
+        <p class="caption">Figure 8.2 — Order Marked as Price Agreed</p>
+
+        <h3>Finance Actions Available</h3>
+        <table>
+            <tr>
+                <th>Action</th>
+                <th>Button</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>Approve pricing</td>
+                <td><strong>Price Agreed</strong> (green)</td>
+                <td>Status → <span class="status st-price">PRICE AGREED</span></td>
+            </tr>
+            <tr>
+                <td>Reject order</td>
+                <td><strong>Reject</strong> (red)</td>
+                <td>Status → <span class="status st-rejected">REJECTED</span> (requires reason)</td>
+            </tr>
+            <tr>
+                <td>Request documents</td>
+                <td><strong>Need Attachment</strong> (amber)</td>
+                <td>Status → <span class="status st-need">NEED ATTACHMENT</span></td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 9. LOGISTICS CONFIRMATION -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="confirmed">9. Step 6 — Logistics Confirmation</h2>
+        <p><span class="role role-logistics">Logistics</span></p>
+        <p>After finance approves the pricing, the Logistics team confirms the order for shipment processing.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Log in as Logistics User</span>
+            <p>Sign in with Logistics credentials. Find the order in the list or dashboard.</p>
+        </div>
+
+        <img src="screenshots/guide/23_do_logistics_view.png" alt="Logistics View" class="screenshot-frame">
+        <p class="caption">Figure 9.1 — Logistics User Viewing a Price Agreed Order</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Click "Confirm"</span>
+            <p>Click the green <strong>Confirm</strong> button. The status changes to <span
+                    class="status st-confirmed">CONFIRMED</span>.</p>
+        </div>
+
+        <img src="screenshots/guide/24_do_confirmed.png" alt="Confirmed" class="screenshot-frame">
+        <p class="caption">Figure 9.2 — Order Confirmed by Logistics</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 10. CUSTOMS DOCUMENT UPDATE -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="customs">10. Step 7 — Customs Document Update</h2>
+        <p><span class="role role-logistics">Logistics</span></p>
+        <p>After confirming the order, the Fujairah Logistics team uploads customs clearance documents.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Open the Confirmed Order</span>
+            <p>Navigate to the confirmed order. Scroll down to the <strong>"Fujairah Logistics Team — Post-Delivery
+                    Tracking"</strong> section.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Click "Edit"</span>
+            <p>Click the <strong>Edit</strong> button on the section header to reveal the editable form.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">3</span>
+            <span class="step-title">Fill in Customs Details</span>
+            <p>Complete the following fields:</p>
+        </div>
+
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>Exit Document Number</strong></td>
+                <td>Fujairah Customs exit document reference</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>FTA Declaration Number</strong></td>
+                <td>Free Trade Agreement declaration number</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>SAP Sales Invoice Number</strong></td>
+                <td>SAP-generated sales invoice reference</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Upload Customs Documents</strong></td>
+                <td>Upload one or more customs clearance files (PDF, DOC, XLS, images)</td>
+                <td><strong>Yes</strong></td>
+            </tr>
+        </table>
+
+        <div class="step-box">
+            <span class="step-num">4</span>
+            <span class="step-title">Upload Files &amp; Submit</span>
+            <p>Click <strong>Choose Files</strong> to select customs documents. You can add multiple files. Then click
+                <strong>"Save &amp; Upload Customs Documents"</strong>.</p>
+        </div>
+
+        <img src="screenshots/guide/26_do_customs_form_filled.png" alt="Customs Form" class="screenshot-frame">
+        <p class="caption">Figure 10.1 — Customs Document Form Filled</p>
+
+        <div class="step-box">
+            <span class="step-num">5</span>
+            <span class="step-title">Status Changes to CUSTOMS DOCUMENT UPDATED</span>
+            <p>The order moves to <span class="status st-customs">CUSTOMS DOCUMENT UPDATED</span>. The uploaded
+                documents appear in the Attachments section.</p>
+        </div>
+
+        <img src="screenshots/guide/27_do_customs_updated.png" alt="Customs Updated" class="screenshot-frame">
+        <p class="caption">Figure 10.2 — Order with Customs Documents Uploaded</p>
+
+        <div class="warn-box">
+            <strong>⚠️ Important:</strong> At least one file MUST be uploaded. The form will not submit without a
+            customs document attachment.
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 11. MARK AS DELIVERED -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="delivered">11. Step 8 — Mark as Delivered</h2>
+        <p><span class="role role-creator">Creator</span> <span class="role role-admin">Admin</span></p>
+        <p>After customs clearance, the Sales team confirms delivery by uploading delivery documents.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Log in as Creator/Sales User</span>
+            <p>Sign in with your Creator credentials. Navigate to the order.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Scroll to "Sales Team — Post-Delivery Tracking"</span>
+            <p>Find the yellow-highlighted section. Click <strong>Edit</strong> to reveal the form.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">3</span>
+            <span class="step-title">Fill in Delivery Details</span>
+            <p>Complete the following fields:</p>
+        </div>
+
+        <table class="field-table">
+            <tr>
+                <th>Field</th>
+                <th>Description</th>
+                <th>Required</th>
+            </tr>
+            <tr>
+                <td><strong>Customs BOE Number</strong></td>
+                <td>Final exit Customs Bill of Entry number</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Airway Bill / Bill of Lading</strong></td>
+                <td>Shipping document reference number</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>IEC Code</strong></td>
+                <td>Final exit Import-Export Code</td>
+                <td>No</td>
+            </tr>
+            <tr>
+                <td><strong>Upload Delivery Documents</strong></td>
+                <td>Upload proof-of-delivery files</td>
+                <td><strong>Yes</strong></td>
+            </tr>
+        </table>
+
+        <div class="step-box">
+            <span class="step-num">4</span>
+            <span class="step-title">Upload Files &amp; Submit</span>
+            <p>Select delivery documents and click <strong>"Save &amp; Upload Delivery Documents"</strong>.</p>
+        </div>
+
+        <img src="screenshots/guide/30_do_delivered_form_filled.png" alt="Delivery Form" class="screenshot-frame">
+        <p class="caption">Figure 11.1 — Delivery Documents Form</p>
+
+        <div class="step-box">
+            <span class="step-num">5</span>
+            <span class="step-title">Order is DELIVERED</span>
+            <p>The status changes to <span class="status st-delivered">DELIVERED</span>. All tracking data (logistics +
+                sales) is visible in read-only mode.</p>
+        </div>
+
+        <img src="screenshots/guide/31_do_delivered.png" alt="Delivered" class="screenshot-frame">
+        <p class="caption">Figure 11.2 — Fully Delivered Order with Post-Delivery Tracking</p>
+
+        <div class="tip-box">
+            <strong>✅ Success:</strong> The order lifecycle is now complete! Both Fujairah Logistics and Sales tracking
+            sections display the entered data, and all uploaded documents are listed in the Attachments section.
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 12. REJECTION & NEED ATTACHMENT -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="rejection">12. Rejection &amp; Need Attachment Flows</h2>
+
+        <h3>12.1 Rejecting an Order</h3>
+        <p><span class="role role-finance">Finance</span></p>
+        <p>If an order has incorrect pricing, missing details, or other issues, the Finance team can reject it.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Click "Reject"</span>
+            <p>On a SUBMITTED order, click the red <strong>Reject</strong> button in the toolbar. A modal dialog opens.
+            </p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Select a Rejection Reason</span>
+            <p>Choose from the dropdown (e.g., "Pricing Issue", "Missing Information", "Duplicate Order"). Optionally
+                add remarks with more detail.</p>
+        </div>
+
+        <img src="screenshots/guide/45_do_reject_form.png" alt="Reject Modal" class="screenshot-frame">
+        <p class="caption">Figure 12.1 — Rejection Reason Modal</p>
+
+        <div class="step-box">
+            <span class="step-num">3</span>
+            <span class="step-title">Click "Reject Order"</span>
+            <p>The order status changes to <span class="status st-rejected">REJECTED</span>. The rejection reason and
+                remarks are displayed on the order detail page.</p>
+        </div>
+
+        <img src="screenshots/guide/46_do_rejected.png" alt="Rejected" class="screenshot-frame">
+        <p class="caption">Figure 12.2 — Rejected Order with Reason</p>
+
+        <h3>12.2 Need Attachment Flow</h3>
+        <p><span class="role role-finance">Finance</span></p>
+        <p>If supporting documents are missing, click <strong>Need Attachment</strong> (amber button). The order moves
+            to <span class="status st-need">NEED ATTACHMENT</span> status. The creator can then upload the required
+            files.</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 13. ORDER LIST -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="orderlist">13. Order List &amp; Filtering</h2>
+        <p>The order list provides a comprehensive view of all delivery orders with powerful filtering.</p>
+
+        <img src="screenshots/guide/33_order_list_all.png" alt="Order List" class="screenshot-frame">
+        <p class="caption">Figure 13.1 — Order List (All Orders)</p>
+
+        <h3>Filtering Options</h3>
+        <table>
+            <tr>
+                <th>Filter</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><strong>Status</strong></td>
+                <td>Filter by any status (DRAFT, SUBMITTED, PRICE AGREED, etc.)</td>
+            </tr>
+            <tr>
+                <td><strong>Search</strong></td>
+                <td>Search by PO Number, customer name, or any text</td>
+            </tr>
+            <tr>
+                <td><strong>Date Range</strong></td>
+                <td>Filter by creation date</td>
+            </tr>
+        </table>
+
+        <p>Click on any order row to open the full detail page.</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 14. PRINT VIEW -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="print">14. Print View &amp; PDF Export</h2>
+        <p>Each order has a print-friendly view for generating hard copies or PDFs.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Click "Print" on the Order Detail</span>
+            <p>On any order detail page, click the <strong>Print</strong> button in the toolbar. A clean,
+                print-optimized view opens.</p>
+        </div>
+
+        <img src="screenshots/guide/43_print_view.png" alt="Print View" class="screenshot-frame">
+        <p class="caption">Figure 14.1 — Print View of a Delivery Order</p>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Print or Save as PDF</span>
+            <p>Use your browser's <strong>Ctrl+P</strong> (Print) function. Choose "Save as PDF" as the destination to
+                create a PDF file.</p>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 15. GRMS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="grms">15. GRMS</h2>
+        <p>The GRMS (Goods Receipt Management System) module provides visibility into goods receipt status.</p>
+
+        <img src="screenshots/guide/36_grms_list.png" alt="GRMS" class="screenshot-frame">
+        <p class="caption">Figure 15.1 — GRMS Page</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 16. REPORTS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2 id="reports">16. Reports</h2>
+        <p>Generate reports for delivery orders within a specified date range.</p>
+
+        <div class="step-box">
+            <span class="step-num">1</span>
+            <span class="step-title">Navigate to Reports</span>
+            <p>Go to <strong>Dashboard → Management → Reports</strong>.</p>
+        </div>
+
+        <div class="step-box">
+            <span class="step-num">2</span>
+            <span class="step-title">Select Date Range and Generate</span>
+            <p>Enter <strong>Date From</strong> and <strong>Date To</strong>, then click <strong>Generate
+                    Report</strong>.</p>
+        </div>
+
+        <img src="screenshots/guide/37_reports_page.png" alt="Reports" class="screenshot-frame">
+        <p class="caption">Figure 16.1 — Reports Page</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 17. ADMIN SETTINGS -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="admin">17. Admin Settings</h2>
+        <p><span class="role role-admin">Admin Only</span></p>
+        <p>System administrators can manage users, modules, workflows, and restricted words from the Admin Settings
+            panel.</p>
+
+        <h3 id="admin-users">17.1 User Management</h3>
+        <p>View and manage all system users. Assign roles (Admin, Creator, Finance, Logistics), activate or deactivate
+            accounts.</p>
+
+        <img src="screenshots/guide/39_admin_users.png" alt="Admin Users" class="screenshot-frame">
+        <p class="caption">Figure 17.1 — User Management Page</p>
+
+        <h3 id="admin-modules">17.2 Module Configuration</h3>
+        <p>Enable or disable application modules. Each module can be toggled on/off.</p>
+
+        <img src="screenshots/guide/40_admin_modules.png" alt="Admin Modules" class="screenshot-frame">
+        <p class="caption">Figure 17.2 — Module Configuration Page</p>
+
+        <h3 id="admin-workflow">17.3 Workflow Editor</h3>
+        <p>View and configure the delivery order workflow. The workflow editor shows all statuses and transitions in a
+            visual diagram.</p>
+
+        <img src="screenshots/guide/41_admin_workflow.png" alt="Workflow Editor" class="screenshot-frame">
+        <p class="caption">Figure 17.3 — Workflow Editor</p>
+
+        <table>
+            <tr>
+                <th>Setting</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><strong>Statuses</strong></td>
+                <td>DRAFT, SUBMITTED, PRICE AGREED, CONFIRMED, CUSTOMS DOCUMENT UPDATED, DELIVERED, NEED ATTACHMENT,
+                    REJECTED, CANCELLED</td>
+            </tr>
+            <tr>
+                <td><strong>Transitions</strong></td>
+                <td>Defines which status changes are allowed and by which roles</td>
+            </tr>
+        </table>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 18. FAQ -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="faq">18. FAQ &amp; Troubleshooting</h2>
+
+        <h3>Q: I cannot log in. What should I do?</h3>
+        <p>Ensure you are using your Active Directory username (not email). If you are locked out, contact IT Support.
+        </p>
+
+        <h3>Q: I submitted an order but need to make changes. How?</h3>
+        <p>You can use "Revert to Draft" if available, or ask the Finance team to reject the order. Rejected orders
+            return to DRAFT status for editing.</p>
+
+        <h3>Q: Why can't I see the "Price Agreed" or "Confirm" buttons?</h3>
+        <p>These buttons are role-specific. Only Finance users see "Price Agreed" on SUBMITTED orders. Only Logistics
+            users see "Confirm" on PRICE AGREED orders. Admin users can see all buttons.</p>
+
+        <h3>Q: My file upload failed. What file types are supported?</h3>
+        <p>Supported: PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, TXT, ZIP, RAR. Files are stored in the database for
+            security.</p>
+
+        <h3>Q: How do I upload customs documents?</h3>
+        <p>Navigate to the CONFIRMED order, scroll to "Fujairah Logistics Team" section, click <strong>Edit</strong>,
+            fill in the fields, attach files, and click <strong>"Save &amp; Upload Customs Documents"</strong>.</p>
+
+        <h3>Q: How do I mark an order as delivered?</h3>
+        <p>Navigate to the CUSTOMS DOCUMENT UPDATED order (as Creator/Sales), scroll to "Sales Team" section, click
+            <strong>Edit</strong>, fill in delivery details, attach files, and click <strong>"Save &amp; Upload Delivery
+                Documents"</strong>.</p>
+
+        <h3>Q: The order shows "NEED ATTACHMENT" status. What does this mean?</h3>
+        <p>Finance has requested additional documents. Upload the required files using the Attachments section, then
+            contact Finance to proceed.</p>
+
+        <h3>Q: Can I delete a delivery order?</h3>
+        <p>No. Orders cannot be deleted. You can cancel a DRAFT order (changes status to CANCELLED) or reject a
+            submitted order.</p>
+
+        <h3>Q: How is the PO Number generated?</h3>
+        <p>Format: <code>AWTFZC/Mon/YY/DO####</code> — auto-generated based on branch code, month, year, and sequential
+            number.</p>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- 19. QUICK REFERENCE -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="page-break"></div>
+        <h2 id="quickref">19. Quick Reference Card</h2>
+
+        <h3>Complete Workflow Steps</h3>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Step</th>
+                <th>Who</th>
+                <th>Action</th>
+                <th>Status Change</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>Setup Products</td>
+                <td><span class="role role-admin">Admin</span></td>
+                <td>Create products in the catalog</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Setup Customers</td>
+                <td><span class="role role-admin">Admin</span></td>
+                <td>Create customers (Bill To / Ship To)</td>
+                <td>—</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Create Order</td>
+                <td><span class="role role-creator">Creator</span></td>
+                <td>Fill form, add items, save as draft</td>
+                <td>→ <span class="status st-draft">DRAFT</span></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Submit</td>
+                <td><span class="role role-creator">Creator</span></td>
+                <td>Click Submit button</td>
+                <td>→ <span class="status st-submitted">SUBMITTED</span></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Finance Review</td>
+                <td><span class="role role-finance">Finance</span></td>
+                <td>Click Price Agreed</td>
+                <td>→ <span class="status st-price">PRICE AGREED</span></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Confirm</td>
+                <td><span class="role role-logistics">Logistics</span></td>
+                <td>Click Confirm</td>
+                <td>→ <span class="status st-confirmed">CONFIRMED</span></td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>Customs Docs</td>
+                <td><span class="role role-logistics">Logistics</span></td>
+                <td>Edit → Fill fields → Upload docs</td>
+                <td>→ <span class="status st-customs">CUSTOMS UPDATED</span></td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Delivery Docs</td>
+                <td><span class="role role-creator">Creator</span></td>
+                <td>Edit → Fill fields → Upload docs</td>
+                <td>→ <span class="status st-delivered">DELIVERED</span></td>
+            </tr>
+        </table>
+
+        <h3>Role Summary</h3>
+        <div class="qr-grid">
+            <div class="qr-card">
+                <h4><span class="role role-admin">Admin</span></h4>
+                <p>Full access. Manage products, customers, users, modules, workflow. Can perform all status
+                    transitions.</p>
+            </div>
+            <div class="qr-card">
+                <h4><span class="role role-creator">Creator / Sales</span></h4>
+                <p>Create orders, submit, add items, upload delivery docs (DELIVERED). Cannot approve pricing or
+                    confirm.</p>
+            </div>
+            <div class="qr-card">
+                <h4><span class="role role-finance">Finance</span></h4>
+                <p>Review + approve pricing (PRICE AGREED), reject, request attachments. Cannot create orders.</p>
+            </div>
+            <div class="qr-card">
+                <h4><span class="role role-logistics">Logistics</span></h4>
+                <p>Confirm orders, upload customs docs (CUSTOMS UPDATED). Cannot create orders or approve pricing.</p>
+            </div>
+        </div>
+
+        <h3>Keyboard Shortcuts</h3>
+        <table>
+            <tr>
+                <th>Key</th>
+                <th>Action</th>
+            </tr>
+            <tr>
+                <td><strong>Ctrl+P</strong></td>
+                <td>Print / Save as PDF (on Print View page)</td>
+            </tr>
+            <tr>
+                <td><strong>Ctrl+F</strong></td>
+                <td>Search on any page</td>
+            </tr>
+            <tr>
+                <td><strong>Tab</strong></td>
+                <td>Navigate between form fields</td>
+            </tr>
+        </table>
+
+        <h3>Status Color Legend</h3>
+        <table>
+            <tr>
+                <th>Status</th>
+                <th>Badge</th>
+                <th>Meaning</th>
+            </tr>
+            <tr>
+                <td>DRAFT</td>
+                <td><span class="status st-draft">DRAFT</span></td>
+                <td>Being prepared, editable</td>
+            </tr>
+            <tr>
+                <td>SUBMITTED</td>
+                <td><span class="status st-submitted">SUBMITTED</span></td>
+                <td>Awaiting finance review</td>
+            </tr>
+            <tr>
+                <td>PRICE AGREED</td>
+                <td><span class="status st-price">PRICE AGREED</span></td>
+                <td>Finance approved, awaiting logistics</td>
+            </tr>
+            <tr>
+                <td>CONFIRMED</td>
+                <td><span class="status st-confirmed">CONFIRMED</span></td>
+                <td>Logistics confirmed, ready for customs</td>
+            </tr>
+            <tr>
+                <td>CUSTOMS UPDATED</td>
+                <td><span class="status st-customs">CUSTOMS UPDATED</span></td>
+                <td>Customs docs uploaded, awaiting delivery</td>
+            </tr>
+            <tr>
+                <td>DELIVERED</td>
+                <td><span class="status st-delivered">DELIVERED</span></td>
+                <td>Delivery confirmed — order complete</td>
+            </tr>
+            <tr>
+                <td>REJECTED</td>
+                <td><span class="status st-rejected">REJECTED</span></td>
+                <td>Finance rejected — needs revision</td>
+            </tr>
+            <tr>
+                <td>CANCELLED</td>
+                <td><span class="status st-cancelled">CANCELLED</span></td>
+                <td>Order cancelled</td>
+            </tr>
+            <tr>
+                <td>NEED ATTACHMENT</td>
+                <td><span class="status st-need">NEED ATTACHMENT</span></td>
+                <td>Missing documents requested</td>
+            </tr>
+        </table>
+
+        <!-- Footer -->
+        <div
+            style="margin-top:50px;padding-top:20px;border-top:2px solid #e2e8f0;text-align:center;font-size:9pt;color:#94a3b8;">
+            <p>Al Wahdania General Trading Co. LLC — Fujairah Branch</p>
+            <p>Delivery Orders Application — User Guide v4.0 — April 2026</p>
+            <p>Confidential — Internal Use Only</p>
+        </div>
+
+    </div><!-- /container -->
+</body>
+
+</html>

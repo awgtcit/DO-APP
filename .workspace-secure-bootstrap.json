@@ -1,0 +1,32 @@
+{
+  "generatedBy": "workspace-secure-bootstrap",
+  "version": "0.1.0",
+  "generatedAt": "2026-04-17T07:44:13.052Z",
+  "options": {
+    "overwriteExisting": false,
+    "includePlaywrightScaffold": true,
+    "includeVSCodeSettings": true,
+    "includeFlaskEnterpriseBaseline": false,
+    "includeGitHubWorkflow": true,
+    "instructionFileName": "kluster-code-verify.instructions.md",
+    "markerFile": ".workspace-secure-bootstrap.json"
+  },
+  "created": [],
+  "overwritten": [],
+  "skipped": [
+    ".github/copilot-instructions.md",
+    ".github/instructions/kluster-code-verify.instructions.md",
+    ".github/instructions/frontend.instructions.md",
+    ".github/instructions/backend.instructions.md",
+    ".github/instructions/security.instructions.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README-AI-INSTRUCTIONS.md",
+    ".vscode/settings.json",
+    ".vscode/extensions.json",
+    "playwright.config.ts",
+    "tests/e2e/.gitkeep",
+    "tests/e2e/app-smoke.spec.ts",
+    ".github/workflows/ci.yml"
+  ]
+}

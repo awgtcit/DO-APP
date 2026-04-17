@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}User Management — Admin Settings{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close" onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:1400px;margin:0 auto;padding:var(--sp-6);">
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-6);">
+    <div>
+      <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-1);">
+        <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;font-size:var(--text-sm);">Settings</a>
+        <span style="color:var(--slate-300);">/</span>
+        <span style="color:var(--slate-600);font-size:var(--text-sm);">Users</span>
+      </div>
+      <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);">User Management</h1>
+    </div>
+    <a href="{{ url_for('admin_settings.user_create') }}" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:18px;height:18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+      Add User
+    </a>
+  </div>
+
+  <!-- Search -->
+  <div style="margin-bottom:var(--sp-4);">
+    <input type="text" class="form-input" id="userSearch" placeholder="Search users by name, email, or department..." style="max-width:400px;">
+  </div>
+
+  <!-- Table -->
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);overflow:hidden;">
+    <div class="table-wrap">
+      <table class="data-table" id="usersTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Department</th>
+            <th>Group</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.EmpID }}</td>
+            <td style="font-weight:var(--font-medium);color:var(--slate-800);">{{ u.FirstName }} {{ u.LastName }}</td>
+            <td>{{ u.EmailAddress or u.CredEmail or '—' }}</td>
+            <td>{{ u.CredUsername or '—' }}</td>
+            <td>{{ u.DepartmentName or '—' }}</td>
+            <td>
+              {% if u.GroupID == 1 %}
+                <span class="badge badge--brand">Admin</span>
+              {% else %}
+                <span class="badge badge--slate">User</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;white-space:nowrap;">
+              <a href="{{ url_for('admin_settings.user_edit', emp_id=u.EmpID) }}" class="btn btn-secondary btn-sm">Edit</a>
+              <a href="{{ url_for('admin_settings.user_permissions', emp_id=u.EmpID) }}" class="btn btn-ghost btn-sm">Permissions</a>
+              <form method="POST" action="{{ url_for('admin_settings.user_delete', emp_id=u.EmpID) }}" style="display:inline;" onsubmit="return confirm('Delete this user permanently?');">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not users %}
+          <tr><td colspan="7" style="text-align:center;padding:var(--sp-8);color:var(--slate-400);">No users found.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('userSearch').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#usersTable tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+</script>
+{% endblock %}

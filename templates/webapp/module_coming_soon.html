@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ module_name }} — Coming Soon{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ module_name }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('webapp.index') }}">Web Application</a>
+      <span>/</span>
+      <span>{{ module_name }}</span>
+    </div>
+  </div>
+  <a href="{{ url_for('webapp.index') }}" class="btn btn-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+    Back
+  </a>
+</div>
+
+<div class="card" style="max-width: 600px; margin: var(--sp-16) auto; text-align: center;">
+  <div class="card__body" style="padding: var(--sp-16) var(--sp-8);">
+    <div style="width:80px;height:80px;margin:0 auto var(--sp-6);border-radius:var(--radius-full);background:var(--brand-50);display:flex;align-items:center;justify-content:center;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:40px;height:40px;color:var(--brand-500)">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.44-5.44M15 3v4.5m0 0V12m0-4.5h4.5m-4.5 0H10.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <h2 style="font-size:var(--text-xl);font-weight:var(--font-bold);color:var(--slate-900);margin-bottom:var(--sp-3);">
+      {{ module_name }}
+    </h2>
+    <p style="color:var(--slate-500);font-size:var(--text-sm);max-width:380px;margin:0 auto var(--sp-8);">
+      This module is currently under development and will be available soon. We're working to bring you a modern experience.
+    </p>
+    <a href="{{ url_for('webapp.index') }}" class="btn btn-primary btn-lg">Back to Web Application</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Intranet Portal{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{% block layout %}
+<div class="layout">
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <div class="sidebar__brand-logo">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Al Wahdania">
+      </div>
+    </div>
+    <nav class="sidebar__nav">
+      {# ── Dynamic sidebar from DB-driven module config ── #}
+      {% set _sections = {'main': 'Main', 'modules': 'Modules', 'admin': 'Admin'} %}
+      {% for sec_key, sec_label in _sections.items() %}
+        {# Collect modules in this section #}
+        {% set ns = namespace(has_items=false) %}
+        {% for m in sidebar_modules if m.section == sec_key %}
+          {% set ns.has_items = true %}
+        {% endfor %}
+
+        {% if ns.has_items or (sec_key == 'admin' and is_admin_user) %}
+        <div class="sidebar__section">
+          <div class="sidebar__section-label">{{ sec_label }}</div>
+        </div>
+        {% for m in sidebar_modules if m.section == sec_key %}
+        <a href="{{ url_for(m.route) }}"
+           class="nav-item {{ 'active' if request.blueprint == m.module_key or (m.module_key == 'webapp' and request.blueprint == 'delivery_orders') }}">
+          {% if m.icon_svg %}{{ m.icon_svg | safe_svg }}{% endif %}
+          {{ m.display_name }}
+        </a>
+        {% endfor %}
+
+        {# Admin Settings link — only for admin / it_admin #}
+        {% if sec_key == 'admin' and is_admin_user %}
+        <a href="{{ url_for('admin_settings.index') }}"
+           class="nav-item {{ 'active' if request.blueprint == 'admin_settings' }}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.432.992a7.723 7.723 0 010 .255c-.007.378.138.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+        {% endif %}
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    <!-- Sidebar footer -->
+    <div style="padding: var(--sp-4) var(--sp-6); border-top: 1px solid rgba(255,255,255,.08); font-size: var(--text-xs); color: var(--slate-500);">
+      v2.0 &middot; Modern Intranet
+    </div>
+  </aside>
+
+  <!-- ═══ Main area ═══ -->
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar__left">
+        <button class="hamburger" aria-label="Toggle menu">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+        </button>
+        <div class="topbar__search">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+          <input type="text" placeholder="Search anything…" aria-label="Global search">
+        </div>
+      </div>
+      <div class="topbar__right">
+        {% if current_user_name %}
+        <span style="font-size: var(--text-sm); color: var(--slate-600);">{{ current_user_name }}</span>
+        <div class="topbar__avatar" title="{{ current_user_email }}">
+          {{ (current_user_name or 'U')[0] | upper }}
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">Logout</a>
+        {% endif %}
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+
+<!-- ═══ Toasts ═══ -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="toast-container">
+  {% for category, message in messages %}
+  <div class="toast toast--{{ category }}">
+    <span>{{ message }}</span>
+    <button class="toast__close" aria-label="Close">&times;</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

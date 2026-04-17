@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Permissions — {{ user.FirstName }} {{ user.LastName }}{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close"
+      onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:800px;margin:0 auto;padding:var(--sp-6);">
+  <!-- Breadcrumb -->
+  <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
+    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <span style="color:var(--slate-300);">/</span>
+    <a href="{{ url_for('admin_settings.users') }}" style="color:var(--slate-400);text-decoration:none;">Users</a>
+    <span style="color:var(--slate-300);">/</span>
+    <span style="color:var(--slate-600);">Permissions</span>
+  </div>
+
+  <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);margin-bottom:var(--sp-2);">
+    Permissions — {{ user.FirstName }} {{ user.LastName }}
+  </h1>
+  <p style="color:var(--slate-500);margin-bottom:var(--sp-6);font-size:var(--text-sm);">EmpID: {{ user.EmpID }} &middot;
+    {{ user.EmailAddress or user.CredEmail }}</p>
+
+  <form method="POST">
+    <!-- DMS Role Flags -->
+    <div
+      style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);margin-bottom:var(--sp-6);">
+      <h2
+        style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">
+        DMS Role Flags</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--sp-3);">
+        {% set flags = [
+        ('it_admin', 'IT Admin', permissions.ITAdmin),
+        ('uploader', 'Uploader', permissions.Uploader),
+        ('approver', 'Approver', permissions.Approver),
+        ('reviewer1', 'Reviewer 1', permissions.Reviewer1),
+        ('reviewer2', 'Reviewer 2', permissions.Reviewer2),
+        ] %}
+        {% for key, label, val in flags %}
+        <label
+          style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3);border:1px solid var(--slate-200);border-radius:var(--radius-md);cursor:pointer;transition:background .15s;">
+          <input type="checkbox" name="{{ key }}" value="1" {{ 'checked' if val }}>
+          <span style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-700);">{{ label
+            }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Module Access Groups -->
+    <div
+      style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);margin-bottom:var(--sp-6);">
+      <h2
+        style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">
+        Module Access Groups</h2>
+      {% if all_groups %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp-3);">
+        {% for g in all_groups %}
+        <label
+          style="display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3);border:1px solid var(--slate-200);border-radius:var(--radius-md);cursor:pointer;">
+          <input type="checkbox" name="access_groups" value="{{ g.id }}" {{ 'checked' if g.id in user_groups }}>
+          <span style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-700);">{{ g.GroupName
+            }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--slate-400);font-size:var(--text-sm);">No access groups defined yet.</p>
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:var(--sp-3);justify-content:flex-end;">
+      <a href="{{ url_for('admin_settings.users') }}" class="btn btn-secondary">Back</a>
+      <button type="submit" class="btn btn-primary">Save Permissions</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+</script>
+{% endblock %}

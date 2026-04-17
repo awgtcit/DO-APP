@@ -1,0 +1,205 @@
+<!-- Searchable select with optional restricted-word blocking -->
+<style>
+.ss-wrap { position: relative; width: 100%; }
+.ss-btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.ss-btn.ss-blocked {
+  border-color: var(--red-500, #ef4444);
+  color: var(--red-600, #dc2626);
+}
+.ss-dropdown {
+  position: absolute;
+  left: 0; top: 100%;
+  margin-top: 4px; width: 100%; min-width: 240px;
+  background: var(--white, #fff);
+  border: 1px solid var(--slate-200, #e2e8f0);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+  z-index: 100; overflow: hidden;
+}
+.ss-search {
+  width: 100%; padding: 8px 12px;
+  border: none; border-bottom: 1px solid var(--slate-100, #f1f5f9);
+  font-size: var(--text-sm, .875rem); outline: none;
+  color: var(--slate-700, #334155); box-sizing: border-box;
+}
+.ss-list { max-height: 220px; overflow-y: auto; padding: 4px; }
+.ss-item {
+  padding: 7px 12px;
+  font-size: var(--text-sm, .875rem);
+  color: var(--slate-700, #334155);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer; transition: background .1s;
+}
+.ss-item:hover { background: var(--slate-50, #f8fafc); }
+.ss-item--selected { background: var(--brand-50, #f0fdf4); color: var(--brand-600, #006633); font-weight: 600; }
+.ss-item--blocked {
+  color: var(--red-400, #f87171);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  opacity: .6;
+}
+.ss-item--blocked:hover { background: var(--red-50, #fef2f2); }
+.ss-item .ss-blocked-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  background: var(--red-100, #fee2e2);
+  color: var(--red-600, #dc2626);
+  border-radius: 3px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.ss-empty { padding: 12px; text-align: center; color: var(--slate-400); font-size: var(--text-sm); }
+</style>
+
+<script>
+(function() {
+  /* ── Helpers ──────────────────────────────────────── */
+  function textContainsBlocked(text, words) {
+    if (!words || !words.length) return false;
+    const tokens = text.toLowerCase().match(/\b\w+\b/g) || [];
+    for (const w of words) { if (tokens.includes(w)) return true; }
+    return false;
+  }
+
+  /* ── SearchableSelect class ─────────────────────── */
+  class SearchableSelect {
+    constructor(selectEl, blockedWords) {
+      if (selectEl.dataset.ssInit) return;
+      selectEl.dataset.ssInit = '1';
+      this.select = selectEl;
+      this.blocked = blockedWords || [];
+      this.options = Array.from(selectEl.options).map(o => ({
+        value: o.value,
+        text: o.textContent.trim(),
+        isBlocked: o.value !== '' && textContainsBlocked(o.textContent, this.blocked),
+      }));
+
+      const wrap = document.createElement('div');
+      wrap.className = 'ss-wrap';
+      selectEl.parentNode.insertBefore(wrap, selectEl);
+
+      const selected = this.options.find(o => o.value === selectEl.value);
+      this.btn = document.createElement('button');
+      this.btn.type = 'button';
+      this.btn.className = 'ss-btn form-select';
+      this.btn.textContent = selected?.text || 'Select\u2026';
+      if (selected?.isBlocked) this.btn.classList.add('ss-blocked');
+      wrap.appendChild(this.btn);
+
+      this.dropdown = document.createElement('div');
+      this.dropdown.className = 'ss-dropdown';
+      this.dropdown.style.display = 'none';
+
+      this.input = document.createElement('input');
+      this.input.type = 'text';
+      this.input.className = 'ss-search';
+      this.input.placeholder = 'Type to search\u2026';
+      this.dropdown.appendChild(this.input);
+
+      this.list = document.createElement('div');
+      this.list.className = 'ss-list';
+      this.dropdown.appendChild(this.list);
+      wrap.appendChild(this.dropdown);
+
+      selectEl.style.position = 'absolute';
+      selectEl.style.opacity = '0';
+      selectEl.style.pointerEvents = 'none';
+      selectEl.style.width = '0';
+      selectEl.style.height = '0';
+      selectEl.tabIndex = -1;
+
+      this._render('');
+      this.btn.addEventListener('click', () => this._toggle());
+      this.input.addEventListener('input', () => this._render(this.input.value));
+      document.addEventListener('click', e => { if (!wrap.contains(e.target)) this._close(); });
+    }
+
+    _render(query) {
+      const q = query.toLowerCase();
+      this.list.innerHTML = '';
+      const matches = this.options.filter(o => o.value !== '' && o.text.toLowerCase().includes(q));
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = 'ss-empty';
+        empty.textContent = 'No results';
+        this.list.appendChild(empty);
+        return;
+      }
+      matches.forEach(o => {
+        const item = document.createElement('div');
+        item.className = 'ss-item';
+        if (o.value === this.select.value) item.classList.add('ss-item--selected');
+        if (o.isBlocked) {
+          item.classList.add('ss-item--blocked');
+          item.innerHTML = o.text + '<span class="ss-blocked-badge">blocked</span>';
+          item.title = 'Contains a restricted word \u2014 cannot select';
+          item.addEventListener('click', e => e.stopPropagation());
+        } else {
+          item.textContent = o.text;
+          item.addEventListener('click', () => {
+            this.select.value = o.value;
+            this.select.dispatchEvent(new Event('change', {bubbles: true}));
+            this.btn.textContent = o.text;
+            this.btn.classList.remove('ss-blocked');
+            this._close();
+          });
+        }
+        this.list.appendChild(item);
+      });
+    }
+
+    _toggle() {
+      if (this.dropdown.style.display !== 'none') { this._close(); }
+      else {
+        this.dropdown.style.display = '';
+        this.input.value = '';
+        this._render('');
+        this.input.focus();
+      }
+    }
+    _close() { this.dropdown.style.display = 'none'; }
+  }
+
+  /* ── Public API ─────────────────────────────────── */
+  window.SearchableSelect = SearchableSelect;
+
+  /**
+   * Initialize searchable selects.
+   * @param {string} selector - CSS selector for target <select> elements
+   * @param {string[]|null} blockedWords - optional array of lowercase blocked words
+   */
+  window.initSearchableSelects = function(selector, blockedWords) {
+    document.querySelectorAll(selector).forEach(sel => {
+      if (sel.options.length > 2) new SearchableSelect(sel, blockedWords || []);
+    });
+  };
+
+  /* ── Auto-init .ss-target with blocked-word fetch ─ */
+  const targets = document.querySelectorAll('.ss-target');
+  if (targets.length) {
+    const wordsUrl = "{{ url_for('admin_settings.api_restricted_words_list') }}";
+    fetch(wordsUrl)
+      .then(r => r.json())
+      .then(data => {
+        const words = data.words || [];
+        targets.forEach(sel => new SearchableSelect(sel, words));
+      })
+      .catch(() => {
+        targets.forEach(sel => new SearchableSelect(sel, []));
+      });
+  }
+})();
+</script>

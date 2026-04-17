@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if editing else 'Add New' }} Customer Details{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<style>
+  /* =========================================================
+     CUSTOMER FORM  -  Sleek Design System
+     ========================================================= */
+
+  /* -- Form card ------------------------------------------- */
+  .cust-card {
+    background: var(--white);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: var(--sp-8);
+  }
+  .cust-card__head {
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-700) 100%);
+    padding: var(--sp-5) var(--sp-6);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .cust-card__head svg { width: 22px; height: 22px; color: rgba(255,255,255,.85); flex-shrink: 0; }
+  .cust-card__head h2 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-semibold);
+    color: var(--white);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  /* -- Two-column form grid ------------------------------- */
+  .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .fg__item {
+    padding: var(--sp-4) var(--sp-6);
+    border-bottom: 1px solid var(--slate-100);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .fg__item:nth-child(odd) { border-right: 1px solid var(--slate-100); }
+  .fg__item--full { grid-column: 1 / -1; border-right: none; }
+
+  .fg__label {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--slate-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .fg__label .req { color: var(--red-500); }
+  .fg__val {
+    background: var(--slate-50);
+    border: 1px dashed var(--slate-300);
+    border-radius: var(--radius-md);
+    padding: 10px var(--sp-4);
+    display: block;
+    min-height: 44px;
+    line-height: 1.4;
+  }
+  .fg__val-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--brand-600);
+    letter-spacing: 0.04em;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .fg__val small {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--slate-400);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    margin-top: 4px;
+  }
+
+  .fg__item input,
+  .fg__item select,
+  .fg__item textarea {
+    width: 100%;
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--text-sm);
+    font-family: inherit;
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    color: var(--slate-800);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .fg__item input:focus,
+  .fg__item select:focus,
+  .fg__item textarea:focus {
+    outline: none;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(0, 102, 51, .12);
+  }
+  .fg__item input::placeholder { color: var(--slate-400); }
+  .fg__item textarea { resize: vertical; min-height: 44px; }
+  .fg__item select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8.825a.5.5 0 01-.354-.146l-4-4a.5.5 0 11.708-.708L6 7.617l3.646-3.646a.5.5 0 11.708.708l-4 4A.5.5 0 016 8.825z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  /* -- Action bar ----------------------------------------- */
+  .form-bar {
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--slate-50);
+    border-top: 1px solid var(--slate-100);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .btn-save {
+    background: var(--brand-600);
+    color: var(--white);
+    border: none;
+    padding: var(--sp-2) var(--sp-6);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .btn-save:hover { background: var(--brand-700); box-shadow: var(--shadow-sm); }
+  .btn-save svg { width: 16px; height: 16px; }
+
+  .btn-reset {
+    background: var(--white);
+    color: var(--slate-600);
+    border: 1px solid var(--slate-300);
+    padding: var(--sp-2) var(--sp-5);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: var(--font-medium);
+    font-size: var(--text-sm);
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    transition: all .15s ease;
+  }
+  .btn-reset:hover { background: var(--slate-50); }
+  .btn-reset svg { width: 16px; height: 16px; }
+
+  /* -- Data-table card ------------------------------------ */
+  .dt-card {
+    background: var(--white);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .dt-card__head {
+    padding: var(--sp-4) var(--sp-6);
+    border-bottom: 1px solid var(--slate-100);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
+  .dt-card__head h3 {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--slate-800);
+    margin: 0;
+  }
+  .badge-count {
+    background: var(--brand-50);
+    color: var(--brand-600);
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+  }
+  .dt-card__body {
+    padding: var(--sp-4) var(--sp-6);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* -- DataTables overrides ------------------------------- */
+  .dataTables_wrapper { font-family: inherit; }
+  .dataTables_wrapper .dataTables_filter input {
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius-md);
+    padding: 5px 12px;
+    font-size: var(--text-sm);
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  .dataTables_wrapper .dataTables_filter input:focus {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(0,102,51,.1);
+  }
+  .dataTables_wrapper .dataTables_info {
+    font-size: var(--text-xs);
+    color: var(--slate-500);
+    padding-top: var(--sp-3) !important;
+  }
+  .dataTables_wrapper .dataTables_paginate { padding-top: var(--sp-3) !important; }
+  .dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: var(--radius-sm) !important;
+    font-size: var(--text-xs) !important;
+    padding: 4px 10px !important;
+    border: 1px solid var(--slate-200) !important;
+    margin: 0 2px !important;
+  }
+  .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: var(--brand-600) !important;
+    color: #fff !important;
+    border-color: var(--brand-600) !important;
+  }
+  .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: var(--slate-100) !important;
+    border-color: var(--slate-300) !important;
+    color: var(--slate-800) !important;
+  }
+
+  /* Export buttons */
+  .dt-buttons { margin-bottom: var(--sp-3); display: flex; flex-wrap: wrap; gap: 6px; }
+  .dt-buttons .dt-button {
+    border: 1px solid var(--slate-200) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 5px 14px !important;
+    background: var(--white) !important;
+    font-size: var(--text-xs) !important;
+    font-weight: var(--font-medium) !important;
+    font-family: inherit !important;
+    cursor: pointer;
+    transition: all .15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dt-buttons .dt-button:hover {
+    background: var(--slate-50) !important;
+    border-color: var(--slate-300) !important;
+  }
+  .dt-buttons .dt-button.buttons-copy  { color: var(--slate-600) !important; }
+  .dt-buttons .dt-button.buttons-excel { color: var(--green-600) !important; }
+  .dt-buttons .dt-button.buttons-csv   { color: var(--slate-700) !important; }
+  .dt-buttons .dt-button.buttons-pdf   { color: var(--red-600)   !important; }
+
+  /* Table styling */
+  #customerTable thead { background: var(--brand-600); }
+  #customerTable thead th {
+    color: #fff !important;
+    font-weight: var(--font-semibold);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: var(--sp-3) var(--sp-3);
+    border: none;
+    border-right: 1px solid rgba(255,255,255,.12);
+    white-space: normal;
+  }
+  #customerTable thead th:last-child { border-right: none; }
+  #customerTable tbody td {
+    padding: var(--sp-3);
+    border-bottom: 1px solid var(--slate-100);
+    font-size: var(--text-sm);
+    color: var(--slate-700);
+    vertical-align: middle;
+  }
+  #customerTable tbody tr:hover { background: var(--slate-50); }
+  #customerTable tbody tr:last-child td { border-bottom: none; }
+  table.dataTable { border-collapse: collapse !important; }
+  table.dataTable.no-footer { border-bottom: none !important; }
+
+  /* -- Back link ------------------------------------------ */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--slate-500);
+    text-decoration: none;
+    margin-top: var(--sp-6);
+    transition: color .15s ease;
+  }
+  .back-link:hover { color: var(--brand-600); }
+  .back-link svg { width: 16px; height: 16px; }
+
+  /* -- Select2 overrides --------------------------------- */
+  .select2-container--default .select2-selection--single {
+    height: 40px;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-family: inherit;
+    background: var(--white);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .select2-container--default .select2-selection--single:hover {
+    border-color: var(--slate-400);
+  }
+  .select2-container--default.select2-container--focus .select2-selection--single,
+  .select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px rgba(0,102,51,.12);
+    outline: none;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 24px;
+    padding-left: 0;
+    color: var(--slate-700);
+    font-size: var(--text-sm);
+  }
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 38px;
+    right: 6px;
+  }
+  .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: var(--slate-400);
+  }
+  .select2-dropdown {
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+  .select2-container--default .select2-search--dropdown .select2-search__field {
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-size: var(--text-sm);
+    font-family: inherit;
+    outline: none;
+  }
+  .select2-container--default .select2-search--dropdown .select2-search__field:focus {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 2px rgba(0,102,51,.1);
+  }
+  .select2-container--default .select2-results__option {
+    padding: 8px 12px;
+    font-size: var(--text-sm);
+    font-family: inherit;
+  }
+  .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background: var(--brand-600);
+    color: #fff;
+  }
+  .select2-container--default .select2-results__option[aria-selected=true] {
+    background: var(--brand-50);
+    color: var(--brand-700);
+  }
+  .select2-container { width: 100% !important; }
+
+  /* -- Blocked-word error indicators ---------------------- */
+  .fg__item--error input,
+  .fg__item--error textarea {
+    border-color: var(--red-500) !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important;
+  }
+  .fg__item--error .select2-container--default .select2-selection--single {
+    border-color: var(--red-500) !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important;
+  }
+  .fg__error-msg {
+    display: none;
+    font-size: var(--text-xs);
+    color: var(--red-500);
+    font-weight: var(--font-medium);
+    margin-top: 4px;
+    align-items: center;
+    gap: 4px;
+  }
+  .fg__item--error .fg__error-msg { display: flex; }
+  .fg__error-msg svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* ======= Responsive ==================================== */
+  @media (max-width: 992px) {
+    .page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+    .fg { grid-template-columns: 1fr; }
+    .fg__item:nth-child(odd) { border-right: none; }
+  }
+  @media (max-width: 768px) {
+    .cust-card__head { padding: var(--sp-4); }
+    .fg__item { padding: var(--sp-3) var(--sp-4); }
+    .form-bar { padding: var(--sp-3) var(--sp-4); flex-wrap: wrap; }
+    .dt-card__body { padding: var(--sp-3); }
+    .dt-card__head { padding: var(--sp-3) var(--sp-4); flex-wrap: wrap; }
+  }
+  @media (max-width: 480px) {
+    .page-header h1 { font-size: var(--text-xl); }
+    .cust-card__head h2 { font-size: var(--text-base); }
+    .fg__item { padding: var(--sp-2) var(--sp-3); }
+    .btn-save, .btn-reset { width: 100%; justify-content: center; }
+    .form-bar { flex-direction: column; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ 'Edit Customer Details' if editing else 'Add New Customer Details' }}</h1>
+    <div class="page-header__breadcrumb" style="margin-top:4px;">
+      <a href="{{ url_for('delivery_orders.dashboard') }}">Delivery Orders</a>
+      <span>/</span>
+      <a href="{{ url_for('do_management.customers') }}">Customers</a>
+      <span>/</span>
+      <span>{{ 'Edit' if editing else 'Create' }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Form Card -->
+<div class="cust-card">
+  <div class="cust-card__head">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+    <h2>Customer Information</h2>
+  </div>
+
+  <form method="POST" id="customerForm"
+        action="{{ url_for('do_management.customer_edit', pk=pk) if editing else url_for('do_management.customer_create') }}">
+    <div class="fg">
+
+      <!-- Ahlaan Vendor Code (read-only, auto-incremented) -->
+      <div class="fg__item">
+        <span class="fg__label">Ahlaan Vendor Code</span>
+        <div class="fg__val">
+          <span class="fg__val-number">{% if editing %}{{ ahlaan_vendor_code }}{% else %}{{ next_sap_code }}{% endif %}</span>
+          <small>Auto-generated &middot; Read Only</small>
+        </div>
+        <input type="hidden" name="ahlaan_vendor_code" value="{% if editing %}{{ ahlaan_vendor_code }}{% else %}{{ next_sap_code }}{% endif %}">
+      </div>
+
+      <!-- SAP Code -->
+      <div class="fg__item">
+        <label class="fg__label" for="sap_code_from_sap">SAP Code</label>
+        <input type="text" id="sap_code_from_sap" name="sap_code_from_sap"
+               value="{{ form.sap_code_from_sap|default('') }}"
+               placeholder="Enter if code available in SAP">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Name -->
+      <div class="fg__item fg__item--full">
+        <label class="fg__label" for="name">Name <span class="req">*</span></label>
+        <input type="text" id="name" name="name"
+               value="{{ form.name|default('') }}" required
+               placeholder="e.g. Al Wahdania General Trading">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Address -->
+      <div class="fg__item fg__item--full">
+        <label class="fg__label" for="address">Address</label>
+        <input type="text" id="address" name="address"
+               value="{{ form.address|default('') }}"
+               placeholder="e.g. Door No: 903, BAY SQUARE BLDG 12, DUBAI, UAE.">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Postal Code -->
+      <div class="fg__item">
+        <label class="fg__label" for="postal_code">Postal Code</label>
+        <input type="text" id="postal_code" name="postal_code"
+               value="{{ form.postal_code|default('') }}"
+               placeholder="e.g. 3630">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Country ISO Code -->
+      <div class="fg__item">
+        <label class="fg__label" for="countrySelect">Country ISO Code</label>
+        <select name="country_iso" id="countrySelect">
+          <option value="">Select Country</option>
+          <option value="AE" {{ 'selected' if form.country_iso|default('') == 'AE' }}>AE - United Arab Emirates</option>
+          <option value="AF" {{ 'selected' if form.country_iso|default('') == 'AF' }}>AF - Afghanistan</option>
+          <option value="AL" {{ 'selected' if form.country_iso|default('') == 'AL' }}>AL - Albania</option>
+          <option value="AM" {{ 'selected' if form.country_iso|default('') == 'AM' }}>AM - Armenia</option>
+          <option value="AO" {{ 'selected' if form.country_iso|default('') == 'AO' }}>AO - Angola</option>
+          <option value="AR" {{ 'selected' if form.country_iso|default('') == 'AR' }}>AR - Argentina</option>
+          <option value="AT" {{ 'selected' if form.country_iso|default('') == 'AT' }}>AT - Austria</option>
+          <option value="AU" {{ 'selected' if form.country_iso|default('') == 'AU' }}>AU - Australia</option>
+          <option value="AZ" {{ 'selected' if form.country_iso|default('') == 'AZ' }}>AZ - Azerbaijan</option>
+          <option value="BA" {{ 'selected' if form.country_iso|default('') == 'BA' }}>BA - Bosnia and Herzegovina</option>
+          <option value="BD" {{ 'selected' if form.country_iso|default('') == 'BD' }}>BD - Bangladesh</option>
+          <option value="BE" {{ 'selected' if form.country_iso|default('') == 'BE' }}>BE - Belgium</option>
+          <option value="BF" {{ 'selected' if form.country_iso|default('') == 'BF' }}>BF - Burkina Faso</option>
+          <option value="BG" {{ 'selected' if form.country_iso|default('') == 'BG' }}>BG - Bulgaria</option>
+          <option value="BH" {{ 'selected' if form.country_iso|default('') == 'BH' }}>BH - Bahrain</option>
+          <option value="BI" {{ 'selected' if form.country_iso|default('') == 'BI' }}>BI - Burundi</option>
+          <option value="BJ" {{ 'selected' if form.country_iso|default('') == 'BJ' }}>BJ - Benin</option>
+          <option value="BN" {{ 'selected' if form.country_iso|default('') == 'BN' }}>BN - Brunei</option>
+          <option value="BO" {{ 'selected' if form.country_iso|default('') == 'BO' }}>BO - Bolivia</option>
+          <option value="BR" {{ 'selected' if form.country_iso|default('') == 'BR' }}>BR - Brazil</option>
+          <option value="BW" {{ 'selected' if form.country_iso|default('') == 'BW' }}>BW - Botswana</option>
+          <option value="BY" {{ 'selected' if form.country_iso|default('') == 'BY' }}>BY - Belarus</option>
+          <option value="CA" {{ 'selected' if form.country_iso|default('') == 'CA' }}>CA - Canada</option>
+          <option value="CD" {{ 'selected' if form.country_iso|default('') == 'CD' }}>CD - Congo (DRC)</option>
+          <option value="CF" {{ 'selected' if form.country_iso|default('') == 'CF' }}>CF - Central African Republic</option>
+          <option value="CG" {{ 'selected' if form.country_iso|default('') == 'CG' }}>CG - Congo</option>
+          <option value="CH" {{ 'selected' if form.country_iso|default('') == 'CH' }}>CH - Switzerland</option>
+          <option value="CI" {{ 'selected' if form.country_iso|default('') == 'CI' }}>CI - Ivory Coast</option>
+          <option value="CL" {{ 'selected' if form.country_iso|default('') == 'CL' }}>CL - Chile</option>
+          <option value="CM" {{ 'selected' if form.country_iso|default('') == 'CM' }}>CM - Cameroon</option>
+          <option value="CN" {{ 'selected' if form.country_iso|default('') == 'CN' }}>CN - China</option>
+          <option value="CO" {{ 'selected' if form.country_iso|default('') == 'CO' }}>CO - Colombia</option>
+          <option value="CR" {{ 'selected' if form.country_iso|default('') == 'CR' }}>CR - Costa Rica</option>
+          <option value="CU" {{ 'selected' if form.country_iso|default('') == 'CU' }}>CU - Cuba</option>
+          <option value="CY" {{ 'selected' if form.country_iso|default('') == 'CY' }}>CY - Cyprus</option>
+          <option value="CZ" {{ 'selected' if form.country_iso|default('') == 'CZ' }}>CZ - Czech Republic</option>
+          <option value="DE" {{ 'selected' if form.country_iso|default('') == 'DE' }}>DE - Germany</option>
+          <option value="DJ" {{ 'selected' if form.country_iso|default('') == 'DJ' }}>DJ - Djibouti</option>
+          <option value="DK" {{ 'selected' if form.country_iso|default('') == 'DK' }}>DK - Denmark</option>
+          <option value="DZ" {{ 'selected' if form.country_iso|default('') == 'DZ' }}>DZ - Algeria</option>
+          <option value="EC" {{ 'selected' if form.country_iso|default('') == 'EC' }}>EC - Ecuador</option>
+          <option value="EE" {{ 'selected' if form.country_iso|default('') == 'EE' }}>EE - Estonia</option>
+          <option value="EG" {{ 'selected' if form.country_iso|default('') == 'EG' }}>EG - Egypt</option>
+          <option value="ER" {{ 'selected' if form.country_iso|default('') == 'ER' }}>ER - Eritrea</option>
+          <option value="ES" {{ 'selected' if form.country_iso|default('') == 'ES' }}>ES - Spain</option>
+          <option value="ET" {{ 'selected' if form.country_iso|default('') == 'ET' }}>ET - Ethiopia</option>
+          <option value="FI" {{ 'selected' if form.country_iso|default('') == 'FI' }}>FI - Finland</option>
+          <option value="FR" {{ 'selected' if form.country_iso|default('') == 'FR' }}>FR - France</option>
+          <option value="GA" {{ 'selected' if form.country_iso|default('') == 'GA' }}>GA - Gabon</option>
+          <option value="GB" {{ 'selected' if form.country_iso|default('') == 'GB' }}>GB - United Kingdom</option>
+          <option value="GE" {{ 'selected' if form.country_iso|default('') == 'GE' }}>GE - Georgia</option>
+          <option value="GH" {{ 'selected' if form.country_iso|default('') == 'GH' }}>GH - Ghana</option>
+          <option value="GM" {{ 'selected' if form.country_iso|default('') == 'GM' }}>GM - Gambia</option>
+          <option value="GN" {{ 'selected' if form.country_iso|default('') == 'GN' }}>GN - Guinea</option>
+          <option value="GR" {{ 'selected' if form.country_iso|default('') == 'GR' }}>GR - Greece</option>
+          <option value="GT" {{ 'selected' if form.country_iso|default('') == 'GT' }}>GT - Guatemala</option>
+          <option value="GW" {{ 'selected' if form.country_iso|default('') == 'GW' }}>GW - Guinea-Bissau</option>
+          <option value="HK" {{ 'selected' if form.country_iso|default('') == 'HK' }}>HK - Hong Kong</option>
+          <option value="HN" {{ 'selected' if form.country_iso|default('') == 'HN' }}>HN - Honduras</option>
+          <option value="HR" {{ 'selected' if form.country_iso|default('') == 'HR' }}>HR - Croatia</option>
+          <option value="HU" {{ 'selected' if form.country_iso|default('') == 'HU' }}>HU - Hungary</option>
+          <option value="ID" {{ 'selected' if form.country_iso|default('') == 'ID' }}>ID - Indonesia</option>
+          <option value="IE" {{ 'selected' if form.country_iso|default('') == 'IE' }}>IE - Ireland</option>
+          <option value="IL" {{ 'selected' if form.country_iso|default('') == 'IL' }}>IL - Israel</option>
+          <option value="IN" {{ 'selected' if form.country_iso|default('') == 'IN' }}>IN - India</option>
+          <option value="IQ" {{ 'selected' if form.country_iso|default('') == 'IQ' }}>IQ - Iraq</option>
+          <option value="IR" {{ 'selected' if form.country_iso|default('') == 'IR' }}>IR - Iran</option>
+          <option value="IS" {{ 'selected' if form.country_iso|default('') == 'IS' }}>IS - Iceland</option>
+          <option value="IT" {{ 'selected' if form.country_iso|default('') == 'IT' }}>IT - Italy</option>
+          <option value="JM" {{ 'selected' if form.country_iso|default('') == 'JM' }}>JM - Jamaica</option>
+          <option value="JO" {{ 'selected' if form.country_iso|default('') == 'JO' }}>JO - Jordan</option>
+          <option value="JP" {{ 'selected' if form.country_iso|default('') == 'JP' }}>JP - Japan</option>
+          <option value="KE" {{ 'selected' if form.country_iso|default('') == 'KE' }}>KE - Kenya</option>
+          <option value="KG" {{ 'selected' if form.country_iso|default('') == 'KG' }}>KG - Kyrgyzstan</option>
+          <option value="KH" {{ 'selected' if form.country_iso|default('') == 'KH' }}>KH - Cambodia</option>
+          <option value="KR" {{ 'selected' if form.country_iso|default('') == 'KR' }}>KR - South Korea</option>
+          <option value="KW" {{ 'selected' if form.country_iso|default('') == 'KW' }}>KW - Kuwait</option>
+          <option value="KZ" {{ 'selected' if form.country_iso|default('') == 'KZ' }}>KZ - Kazakhstan</option>
+          <option value="LA" {{ 'selected' if form.country_iso|default('') == 'LA' }}>LA - Laos</option>
+          <option value="LB" {{ 'selected' if form.country_iso|default('') == 'LB' }}>LB - Lebanon</option>
+          <option value="LK" {{ 'selected' if form.country_iso|default('') == 'LK' }}>LK - Sri Lanka</option>
+          <option value="LR" {{ 'selected' if form.country_iso|default('') == 'LR' }}>LR - Liberia</option>
+          <option value="LT" {{ 'selected' if form.country_iso|default('') == 'LT' }}>LT - Lithuania</option>
+          <option value="LU" {{ 'selected' if form.country_iso|default('') == 'LU' }}>LU - Luxembourg</option>
+          <option value="LV" {{ 'selected' if form.country_iso|default('') == 'LV' }}>LV - Latvia</option>
+          <option value="LY" {{ 'selected' if form.country_iso|default('') == 'LY' }}>LY - Libya</option>
+          <option value="MA" {{ 'selected' if form.country_iso|default('') == 'MA' }}>MA - Morocco</option>
+          <option value="MD" {{ 'selected' if form.country_iso|default('') == 'MD' }}>MD - Moldova</option>
+          <option value="MG" {{ 'selected' if form.country_iso|default('') == 'MG' }}>MG - Madagascar</option>
+          <option value="ML" {{ 'selected' if form.country_iso|default('') == 'ML' }}>ML - Mali</option>
+          <option value="MM" {{ 'selected' if form.country_iso|default('') == 'MM' }}>MM - Myanmar</option>
+          <option value="MN" {{ 'selected' if form.country_iso|default('') == 'MN' }}>MN - Mongolia</option>
+          <option value="MR" {{ 'selected' if form.country_iso|default('') == 'MR' }}>MR - Mauritania</option>
+          <option value="MU" {{ 'selected' if form.country_iso|default('') == 'MU' }}>MU - Mauritius</option>
+          <option value="MW" {{ 'selected' if form.country_iso|default('') == 'MW' }}>MW - Malawi</option>
+          <option value="MX" {{ 'selected' if form.country_iso|default('') == 'MX' }}>MX - Mexico</option>
+          <option value="MY" {{ 'selected' if form.country_iso|default('') == 'MY' }}>MY - Malaysia</option>
+          <option value="MZ" {{ 'selected' if form.country_iso|default('') == 'MZ' }}>MZ - Mozambique</option>
+          <option value="NA" {{ 'selected' if form.country_iso|default('') == 'NA' }}>NA - Namibia</option>
+          <option value="NE" {{ 'selected' if form.country_iso|default('') == 'NE' }}>NE - Niger</option>
+          <option value="NG" {{ 'selected' if form.country_iso|default('') == 'NG' }}>NG - Nigeria</option>
+          <option value="NI" {{ 'selected' if form.country_iso|default('') == 'NI' }}>NI - Nicaragua</option>
+          <option value="NL" {{ 'selected' if form.country_iso|default('') == 'NL' }}>NL - Netherlands</option>
+          <option value="NO" {{ 'selected' if form.country_iso|default('') == 'NO' }}>NO - Norway</option>
+          <option value="NP" {{ 'selected' if form.country_iso|default('') == 'NP' }}>NP - Nepal</option>
+          <option value="NZ" {{ 'selected' if form.country_iso|default('') == 'NZ' }}>NZ - New Zealand</option>
+          <option value="OM" {{ 'selected' if form.country_iso|default('') == 'OM' }}>OM - Oman</option>
+          <option value="PA" {{ 'selected' if form.country_iso|default('') == 'PA' }}>PA - Panama</option>
+          <option value="PE" {{ 'selected' if form.country_iso|default('') == 'PE' }}>PE - Peru</option>
+          <option value="PG" {{ 'selected' if form.country_iso|default('') == 'PG' }}>PG - Papua New Guinea</option>
+          <option value="PH" {{ 'selected' if form.country_iso|default('') == 'PH' }}>PH - Philippines</option>
+          <option value="PK" {{ 'selected' if form.country_iso|default('') == 'PK' }}>PK - Pakistan</option>
+          <option value="PL" {{ 'selected' if form.country_iso|default('') == 'PL' }}>PL - Poland</option>
+          <option value="PT" {{ 'selected' if form.country_iso|default('') == 'PT' }}>PT - Portugal</option>
+          <option value="PY" {{ 'selected' if form.country_iso|default('') == 'PY' }}>PY - Paraguay</option>
+          <option value="QA" {{ 'selected' if form.country_iso|default('') == 'QA' }}>QA - Qatar</option>
+          <option value="RO" {{ 'selected' if form.country_iso|default('') == 'RO' }}>RO - Romania</option>
+          <option value="RS" {{ 'selected' if form.country_iso|default('') == 'RS' }}>RS - Serbia</option>
+          <option value="RU" {{ 'selected' if form.country_iso|default('') == 'RU' }}>RU - Russia</option>
+          <option value="RW" {{ 'selected' if form.country_iso|default('') == 'RW' }}>RW - Rwanda</option>
+          <option value="SA" {{ 'selected' if form.country_iso|default('') == 'SA' }}>SA - Saudi Arabia</option>
+          <option value="SD" {{ 'selected' if form.country_iso|default('') == 'SD' }}>SD - Sudan</option>
+          <option value="SE" {{ 'selected' if form.country_iso|default('') == 'SE' }}>SE - Sweden</option>
+          <option value="SG" {{ 'selected' if form.country_iso|default('') == 'SG' }}>SG - Singapore</option>
+          <option value="SI" {{ 'selected' if form.country_iso|default('') == 'SI' }}>SI - Slovenia</option>
+          <option value="SK" {{ 'selected' if form.country_iso|default('') == 'SK' }}>SK - Slovakia</option>
+          <option value="SL" {{ 'selected' if form.country_iso|default('') == 'SL' }}>SL - Sierra Leone</option>
+          <option value="SN" {{ 'selected' if form.country_iso|default('') == 'SN' }}>SN - Senegal</option>
+          <option value="SO" {{ 'selected' if form.country_iso|default('') == 'SO' }}>SO - Somalia</option>
+          <option value="SS" {{ 'selected' if form.country_iso|default('') == 'SS' }}>SS - South Sudan</option>
+          <option value="SY" {{ 'selected' if form.country_iso|default('') == 'SY' }}>SY - Syria</option>
+          <option value="TD" {{ 'selected' if form.country_iso|default('') == 'TD' }}>TD - Chad</option>
+          <option value="TG" {{ 'selected' if form.country_iso|default('') == 'TG' }}>TG - Togo</option>
+          <option value="TH" {{ 'selected' if form.country_iso|default('') == 'TH' }}>TH - Thailand</option>
+          <option value="TJ" {{ 'selected' if form.country_iso|default('') == 'TJ' }}>TJ - Tajikistan</option>
+          <option value="TM" {{ 'selected' if form.country_iso|default('') == 'TM' }}>TM - Turkmenistan</option>
+          <option value="TN" {{ 'selected' if form.country_iso|default('') == 'TN' }}>TN - Tunisia</option>
+          <option value="TR" {{ 'selected' if form.country_iso|default('') == 'TR' }}>TR - Turkey</option>
+          <option value="TZ" {{ 'selected' if form.country_iso|default('') == 'TZ' }}>TZ - Tanzania</option>
+          <option value="UA" {{ 'selected' if form.country_iso|default('') == 'UA' }}>UA - Ukraine</option>
+          <option value="UG" {{ 'selected' if form.country_iso|default('') == 'UG' }}>UG - Uganda</option>
+          <option value="US" {{ 'selected' if form.country_iso|default('') == 'US' }}>US - United States</option>
+          <option value="UY" {{ 'selected' if form.country_iso|default('') == 'UY' }}>UY - Uruguay</option>
+          <option value="UZ" {{ 'selected' if form.country_iso|default('') == 'UZ' }}>UZ - Uzbekistan</option>
+          <option value="VE" {{ 'selected' if form.country_iso|default('') == 'VE' }}>VE - Venezuela</option>
+          <option value="VN" {{ 'selected' if form.country_iso|default('') == 'VN' }}>VN - Vietnam</option>
+          <option value="YE" {{ 'selected' if form.country_iso|default('') == 'YE' }}>YE - Yemen</option>
+          <option value="ZA" {{ 'selected' if form.country_iso|default('') == 'ZA' }}>ZA - South Africa</option>
+          <option value="ZM" {{ 'selected' if form.country_iso|default('') == 'ZM' }}>ZM - Zambia</option>
+          <option value="ZW" {{ 'selected' if form.country_iso|default('') == 'ZW' }}>ZW - Zimbabwe</option>
+        </select>
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Region / State -->
+      <div class="fg__item">
+        <label class="fg__label" for="region">Region / State</label>
+        <input type="text" id="region" name="region"
+               value="{{ form.region|default('') }}"
+               placeholder="e.g. Dubai">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+
+      <!-- Contact Number -->
+      <div class="fg__item">
+        <label class="fg__label" for="contact_number">Contact Number</label>
+        <input type="tel" id="contact_number" name="contact_number"
+               value="{{ form.contact_number|default('') }}"
+               inputmode="tel"
+               pattern="[+\d\s\-()]*"
+               placeholder="e.g. +97142224998">
+        <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
+      </div>
+    </div>
+
+    <div class="form-bar">
+      <button type="submit" class="btn-save">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        {{ 'Update Customer' if editing else 'Save Customer' }}
+      </button>
+      <button type="reset" class="btn-reset">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+        Reset
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- DataTable Card -->
+<div class="dt-card">
+  <div class="dt-card__head">
+    <h3>All Customers</h3>
+    <span class="badge-count">{{ customers|length if customers else 0 }} records</span>
+  </div>
+  <div class="dt-card__body">
+    <table id="customerTable" class="display" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Ahlaan Vendor Code</th>
+          <th>SAP Code</th>
+          <th>Name</th>
+          <th>Address</th>
+          <th>Postal Code</th>
+          <th>Country</th>
+          <th>Region / State</th>
+          <th>Contact Number</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td>{{ c.SapCode }}</td>
+          <td>{{ c.SapCodeFromSAP or '' }}</td>
+          <td>{{ c.Name }}</td>
+          <td>{{ c.Address or '' }}</td>
+          <td>{{ c.Postal_Code or '' }}</td>
+          <td>{{ c.Country_ISO_Code or '' }}</td>
+          <td>{{ c.Region or '' }}</td>
+          <td>{{ c.Contact_Number or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a href="{{ url_for('delivery_orders.dashboard') }}" class="back-link">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+  Back to Dashboard
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function () {
+  $('#countrySelect').select2({
+    placeholder: 'Search and select a country...',
+    allowClear: true,
+    width: '100%'
+  });
+
+  $('#customerTable').DataTable({
+    dom: 'Bfrtip',
+    buttons: [
+      { extend: 'copy',  className: 'buttons-copy',  text: '\ud83d\udccb Copy' },
+      { extend: 'excel', className: 'buttons-excel', text: '\ud83d\udcca Excel' },
+      { extend: 'csv',   className: 'buttons-csv',   text: '\ud83d\udcc4 CSV' },
+      { extend: 'pdf',   className: 'buttons-pdf',   text: '\ud83d\udcd5 PDF' },
+    ],
+    order: [[0, 'desc']],
+    pageLength: 10,
+    responsive: false,
+    scrollX: false,
+    autoWidth: true,
+    language: {
+      search: '',
+      searchPlaceholder: 'Search customers\u2026',
+      emptyTable: 'No customers found.',
+      info: 'Showing _START_ to _END_ of _TOTAL_ customers',
+    },
+  });
+
+  /* ── Restricted Words – Real-time Client-side Validation ── */
+  var _blockedWords = [];
+  $.getJSON('/admin/settings/api/restricted-words-list', function(data) {
+    _blockedWords = (data.words || []).map(function(w){ return w.toLowerCase(); });
+  });
+
+  function findBlockedWords(text) {
+    if (!text || !_blockedWords.length) return [];
+    var words = text.toLowerCase().match(/\b\w+\b/g) || [];
+    var found = [];
+    for (var i = 0; i < words.length; i++) {
+      if (_blockedWords.indexOf(words[i]) !== -1 && found.indexOf(words[i]) === -1) {
+        found.push(words[i]);
+      }
+    }
+    return found;
+  }
+
+  function validateField(input) {
+    var $item = $(input).closest('.fg__item');
+    var blocked = findBlockedWords($(input).val());
+    if (blocked.length) {
+      $item.addClass('fg__item--error');
+      $item.find('.fg__error-msg span').text('Blocked word(s): ' + blocked.join(', '));
+      return false;
+    } else {
+      $item.removeClass('fg__item--error');
+      return true;
+    }
+  }
+
+  function validateCountryDropdown() {
+    var $item = $('#countrySelect').closest('.fg__item');
+    var selectedText = $('#countrySelect option:selected').text() || '';
+    var blocked = findBlockedWords(selectedText);
+    if (blocked.length) {
+      $item.addClass('fg__item--error');
+      $item.find('.fg__error-msg span').text('Selected country contains blocked word(s): ' + blocked.join(', '));
+      // Reset the dropdown
+      $('#countrySelect').val('').trigger('change.select2');
+      return false;
+    } else {
+      $item.removeClass('fg__item--error');
+      return true;
+    }
+  }
+
+  // All text fields to validate
+  var fieldsToCheck = ['#sap_code_from_sap', '#name', '#address', '#postal_code', '#region', '#contact_number'];
+  $.each(fieldsToCheck, function(_, sel) {
+    $(sel).on('input blur', function(){ validateField(this); });
+  });
+
+  // Country dropdown validation on change
+  $('#countrySelect').on('change', function() { validateCountryDropdown(); });
+
+  // Contact Number: allow only digits, +, -, spaces, parentheses
+  $('#contact_number').on('input', function() {
+    var cleaned = $(this).val().replace(/[^+\d\s\-()]/g, '');
+    if (cleaned !== $(this).val()) $(this).val(cleaned);
+  });
+
+  // Block form submission if any field has a blocked word
+  $('#customerForm').on('submit', function(e) {
+    var hasError = false;
+    $.each(fieldsToCheck, function(_, sel) {
+      var el = $(sel)[0];
+      if (el && !validateField(el)) hasError = true;
+    });
+    if (!validateCountryDropdown()) hasError = true;
+    if (hasError) {
+      e.preventDefault();
+      alert('Please remove blocked words before saving.');
+    }
+  });
+});
+</script>
+{% endblock %}

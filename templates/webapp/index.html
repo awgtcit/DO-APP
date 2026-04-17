@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Web Application — Intranet Portal{% endblock %}
+
+{% block head %}
+<style>
+/* ── Web Application Module Grid ──────────────────────────────── */
+.webapp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-6);
+}
+.module-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all .2s var(--ease);
+  box-shadow: var(--shadow-xs);
+}
+.module-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+.module-card__header {
+  padding: var(--sp-5) var(--sp-6);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--white);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.module-card__header svg { width: 22px; height: 22px; opacity: .9; }
+
+/* Color themes */
+.module-card--amber  .module-card__header { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.module-card--brand  .module-card__header { background: linear-gradient(135deg, #005528, #1a7a42); }
+.module-card--green  .module-card__header { background: linear-gradient(135deg, #15803d, #22c55e); }
+.module-card--purple .module-card__header { background: linear-gradient(135deg, #005528, #1a7a42); }
+.module-card--teal   .module-card__header { background: linear-gradient(135deg, #005528, #1a7a42); }
+.module-card--red    .module-card__header { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+.module-card--slate  .module-card__header { background: linear-gradient(135deg, #334155, #64748b); }
+.module-card--indigo .module-card__header { background: linear-gradient(135deg, #334155, #64748b); }
+
+.module-card__body {
+  padding: var(--sp-2) 0;
+}
+.module-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-6);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--slate-700);
+  transition: all .12s var(--ease);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+}
+.module-link:hover {
+  background: var(--slate-50);
+  color: var(--brand-700);
+  border-left-color: var(--brand-500);
+  text-decoration: none;
+}
+.module-link svg { width: 16px; height: 16px; color: var(--slate-400); flex-shrink: 0; }
+.module-link:hover svg { color: var(--brand-600); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Web Application</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <span>Web Application</span>
+    </div>
+  </div>
+</div>
+
+<div class="webapp-grid">
+  {% for key, mod in modules.items() %}
+  <div class="module-card module-card--{{ mod.color }}">
+    <div class="module-card__header">
+      {% if mod.icon == 'clipboard-check' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      {% elif mod.icon == 'archive' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+      {% elif mod.icon == 'factory' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 0h.008v.008h-.008V7.5z"/></svg>
+      {% elif mod.icon == 'banknotes' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
+      {% elif mod.icon == 'wrench' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.44-5.44a.562.562 0 00-.22-.127 4.918 4.918 0 01-.436-.047 5.001 5.001 0 01-3.6-6.578l3.09 3.09 2.12-.71.71-2.12-3.09-3.09A5 5 0 0111.13 3.6a4.918 4.918 0 01.047.436c.008.078.022.155.04.23a.561.561 0 00.128.222l5.44 5.44m-5.27 5.27l5.27-5.27m0 0l5.44 5.44a.563.563 0 00.222.128c.074.018.151.032.23.04a5 5 0 01-3.6 6.578l-3.09-3.09-.71 2.12-2.12.71 3.09 3.09A5 5 0 0112.87 20.4a4.92 4.92 0 01-.047-.436.562.562 0 00-.128-.222l-5.44-5.44"/></svg>
+      {% elif mod.icon == 'truck' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>
+      {% elif mod.icon == 'newspaper' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+      {% elif mod.icon == 'server' %}
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 00-.12-1.03l-2.268-9.64a3.375 3.375 0 00-3.285-2.602H7.923a3.375 3.375 0 00-3.285 2.602l-2.268 9.64a4.5 4.5 0 00-.12 1.03v.228m19.5 0a3 3 0 01-3 3H5.25a3 3 0 01-3-3m19.5 0a3 3 0 00-3-3H5.25a3 3 0 00-3 3m16.5 0h.008v.008h-.008v-.008zm-3 0h.008v.008h-.008v-.008z"/></svg>
+      {% endif %}
+      {{ mod.label }}
+    </div>
+    <div class="module-card__body">
+      {% for item in mod.sub_items %}
+      <a href="{{ item.link if item.link is defined and item.link else url_for('webapp.module_page', slug=item.slug) }}"
+         class="module-link">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        {{ item.label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

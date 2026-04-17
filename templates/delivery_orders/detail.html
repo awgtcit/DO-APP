@@ -1,0 +1,1182 @@
+{% extends "base.html" %}
+{% block title %}{{ order.PO_Number }} — Order Detail{% endblock %}
+
+{% block head %}
+<style>
+  /* ── Brand Design Tokens ─────────────────────────────── */
+  .do-detail {
+    --teal: #006633;
+    --teal-dark: #005528;
+    --teal-light: #e8f5e9;
+    --pale-blue: #e8f5e9;
+  }
+
+  /* ── Page header & actions ──────────────────────────── */
+  .order-actions {
+    display: flex;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* ── Status pill ────────────────────────────────────── */
+  .status-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 16px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .status-large--draft {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .status-large--submitted {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .status-large--confirmed {
+    background: #dcfce7;
+    color: #15803d;
+  }
+
+  .status-large--price-agreed {
+    background: #e8f5e9;
+    color: #006633;
+  }
+
+  .status-large--need-attachment {
+    background: #fef9c3;
+    color: #a16207;
+  }
+
+  .status-large--rejected {
+    background: #fecaca;
+    color: #991b1b;
+  }
+
+  .status-large--cancelled {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .status-large--customs-document-updated {
+    background: #e0f2fe;
+    color: #0c4a6e;
+  }
+
+  .status-large--delivered {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* ── Document wrapper ───────────────────────────────── */
+  .doc-wrapper {
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+    margin-bottom: var(--sp-6);
+  }
+
+  /* ── Title bar ──────────────────────────────────────── */
+  .doc-title-bar {
+    text-align: center;
+    padding: 12px 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--slate-900);
+    border-bottom: 1px solid var(--slate-200);
+    background: var(--slate-50);
+  }
+
+  /* ── Info sections (table-based two-column) ─────────── */
+  .info-section {
+    display: table;
+    width: 100%;
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .info-col {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+    padding: 14px 20px;
+  }
+
+  .info-col+.info-col {
+    border-left: 1px solid var(--slate-200);
+  }
+
+  .info-col__heading {
+    font-weight: var(--font-bold);
+    font-size: var(--text-sm);
+    color: var(--teal-dark, #005528);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #006633;
+    display: inline-block;
+  }
+
+  .field-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .field-table td {
+    padding: 3px 0;
+    font-size: var(--text-sm);
+    vertical-align: top;
+  }
+
+  .field-table .lbl {
+    width: 170px;
+    font-weight: var(--font-semibold);
+    color: var(--slate-500);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+
+  .field-table .sep {
+    width: 12px;
+    text-align: center;
+    color: var(--slate-400);
+  }
+
+  .field-table .val {
+    color: var(--slate-800);
+    font-weight: var(--font-medium);
+  }
+
+  @media (max-width: 768px) {
+    .info-section {
+      display: block;
+    }
+
+    .info-col {
+      display: block;
+      width: 100%;
+    }
+
+    .info-col+.info-col {
+      border-left: none;
+      border-top: 1px solid var(--slate-200);
+    }
+  }
+
+  /* ── Items table (brand header) ──────────────────────── */
+  .items-teal {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .items-teal thead th {
+    background: #006633;
+    color: #fff;
+    font-weight: var(--font-semibold);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 8px 10px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, .3);
+  }
+
+  .items-teal tbody td {
+    padding: 6px 10px;
+    font-size: var(--text-sm);
+    border: 1px solid var(--slate-200);
+    vertical-align: middle;
+  }
+
+  .items-teal tbody td.qty-cell {
+    background: #e8f5e9;
+    font-weight: var(--font-bold);
+    text-align: right;
+  }
+
+  .items-teal tbody td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .items-teal tbody tr:hover {
+    background: var(--slate-50);
+  }
+
+  .items-teal .totals-row td {
+    background: var(--slate-100);
+    font-weight: var(--font-bold);
+    font-size: var(--text-sm);
+    padding: 8px 10px;
+    border: none;
+  }
+
+  .items-teal .totals-row .total-val {
+    color: #006633;
+    text-align: right;
+  }
+
+  .items-teal .totals-row .total-lbl {
+    text-align: right;
+  }
+
+  .currency {
+    font-size: 0.85em;
+    color: inherit;
+    font-weight: normal;
+    margin-left: 2px;
+    padding: 0 4px;
+  }
+
+  /* ── Notify / Shipping row ──────────────────────────── */
+  .notify-row {
+    display: table;
+    width: 100%;
+    padding: 10px 20px;
+    border-top: 1px solid var(--slate-200);
+    font-size: var(--text-sm);
+  }
+
+  .notify-row__left,
+  .notify-row__right {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+  }
+
+  .notify-row__right {
+    text-align: right;
+  }
+
+  .notify-row u {
+    text-decoration-color: #006633;
+    text-underline-offset: 2px;
+    font-weight: var(--font-semibold);
+    color: #005528;
+  }
+
+  /* ── QR section ─────────────────────────────────────── */
+  .qr-section {
+    text-align: center;
+    padding: 20px 0;
+    border-top: 1px solid var(--slate-200);
+  }
+
+  .qr-section img {
+    width: 180px;
+    height: 180px;
+    image-rendering: pixelated;
+  }
+
+  .qr-section__cap {
+    font-size: 11px;
+    color: var(--slate-500);
+    margin-top: 4px;
+  }
+
+  /* ── Add item form ──────────────────────────────────── */
+  .add-item-form {
+    background: var(--slate-50);
+    padding: var(--sp-5);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--slate-300);
+    margin-top: var(--sp-4);
+  }
+
+  .add-item-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr auto;
+    gap: var(--sp-3);
+    align-items: end;
+  }
+
+  @media (max-width: 900px) {
+    .add-item-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /* ── Reject modal ───────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal-box {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-8);
+    max-width: 500px;
+    width: 90%;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .modal-box h3 {
+    margin-bottom: var(--sp-4);
+  }
+
+  /* ── Attachments ────────────────────────────────────── */
+  .attach-list {
+    margin-top: var(--sp-4);
+  }
+
+  .attach-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-3);
+    background: var(--slate-50);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-2);
+  }
+
+  /* ── Reject info box ────────────────────────────────── */
+  .reject-info {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    padding: var(--sp-4);
+    margin-top: var(--sp-4);
+  }
+
+  /* ── Audit row ──────────────────────────────────────── */
+  .audit-row {
+    padding: 8px 20px;
+    border-top: 1px solid var(--slate-200);
+    font-size: var(--text-xs);
+    color: var(--slate-500);
+    display: flex;
+    gap: var(--sp-6);
+  }
+
+  .audit-row strong {
+    color: var(--slate-700);
+  }
+
+  /* ── Post-delivery tracking sections ────────────────── */
+  .post-delivery-section {
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--sp-4);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  }
+
+  .post-delivery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .post-delivery-header--logistics {
+    background: #e0f2fe;
+    color: #0c4a6e;
+    border-bottom-color: #bae6fd;
+  }
+
+  .post-delivery-header--sales {
+    background: #fef3c7;
+    color: #92400e;
+    border-bottom-color: #fde68a;
+  }
+
+  .post-delivery-body {
+    padding: 16px 20px;
+  }
+
+  .post-delivery-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--sp-4);
+  }
+
+  @media (max-width: 768px) {
+    .post-delivery-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .pd-field-label {
+    font-size: 11px;
+    font-weight: var(--font-semibold);
+    color: var(--slate-500);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    margin-bottom: 4px;
+  }
+
+  .pd-field-value {
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--slate-800);
+    min-height: 20px;
+  }
+
+  /* File list with remove buttons */
+  .file-list-container {
+    margin-top: var(--sp-3);
+  }
+
+  .file-list-header {
+    font-size: var(--text-xs);
+    font-weight: var(--font-semibold);
+    color: var(--slate-600);
+    margin-bottom: var(--sp-2);
+  }
+
+  .file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .file-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    font-size: var(--text-sm);
+    transition: background .15s;
+  }
+
+  .file-list-item:hover {
+    background: var(--slate-100);
+  }
+
+  .file-list-icon {
+    flex-shrink: 0;
+    font-size: 16px;
+  }
+
+  .file-list-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--slate-700);
+    font-weight: var(--font-medium);
+  }
+
+  .file-list-size {
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    color: var(--slate-400);
+    min-width: 55px;
+    text-align: right;
+  }
+
+  .file-list-remove {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+    padding: 0;
+  }
+
+  .file-list-remove:hover {
+    background: #fca5a5;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set st = order.Status|default('')|upper %}
+<div class="do-detail">
+
+  <!-- ── Page header ──────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h1>{{ order.PO_Number }}</h1>
+      <div class="page-header__breadcrumb">
+        <a href="{{ url_for('dashboard.home') }}">Dashboard</a> <span>/</span>
+        <a href="{{ url_for('webapp.index') }}">Web Application</a> <span>/</span>
+        <a href="{{ url_for('delivery_orders.dashboard') }}">Delivery Order</a> <span>/</span>
+        <a href="{{ url_for('delivery_orders.order_list') }}">Orders</a> <span>/</span>
+        <span>{{ order.PO_Number }}</span>
+      </div>
+    </div>
+    <div class="order-actions">
+      <span class="status-large status-large--{{ st|lower|replace(' ', '-') }}">
+        <span class="status-dot"></span> {{ st }}
+      </span>
+
+      {% if order.can_edit %}
+      <a href="{{ url_for('delivery_orders.edit_form', order_id=order.id) }}" class="btn btn-secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+        </svg>
+        Edit
+      </a>
+      {% endif %}
+
+      <a href="{{ url_for('delivery_orders.print_view', order_id=order.id) }}" class="btn btn-secondary"
+        target="_blank">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          style="width:16px;height:16px">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m0 0a48.45 48.45 0 018.5 0" />
+        </svg>
+        Print
+      </a>
+
+      {% for t in order.allowed_transitions|default([]) %}
+      {% if t in ('CUSTOMS DOCUMENT UPDATED', 'DELIVERED') %}
+      {# These transitions are triggered by post-delivery forms, not buttons #}
+      {% elif t == 'REJECTED' %}
+      <button type="button" class="btn btn-danger btn-sm"
+        onclick="document.getElementById('rejectModal').classList.add('active')">Reject</button>
+      {% else %}
+      <form method="post" action="{{ url_for('delivery_orders.change_status', order_id=order.id) }}"
+        style="display:inline">
+        <input type="hidden" name="new_status" value="{{ t }}">
+        {% if t == 'SUBMITTED' %}
+        <button type="submit" class="btn btn-primary btn-sm"
+          onclick="return confirm('Submit this order?')">Submit</button>
+        {% elif t == 'CONFIRMED' %}
+        <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Confirm this order?')"
+          style="background:#15803d;border-color:#15803d;">Confirm</button>
+        {% elif t == 'PRICE AGREED' %}
+        <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Mark as Price Agreed?')"
+          style="background:#006633;border-color:#006633;">Price Agreed</button>
+        {% elif t == 'CANCELLED' %}
+        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Cancel this order?')">Cancel
+          Order</button>
+        {% elif t == 'DRAFT' %}
+        <button type="submit" class="btn btn-secondary btn-sm">Revert to Draft</button>
+        {% elif t == 'NEED ATTACHMENT' %}
+        <button type="submit" class="btn btn-secondary btn-sm"
+          style="background:#ca8a04;border-color:#ca8a04;color:#fff;">Need Attachment</button>
+        {% endif %}
+      </form>
+      {% endif %}
+      {% endfor %}
+
+      <a href="{{ url_for('delivery_orders.order_list') }}" class="btn btn-ghost">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+          style="width:16px;height:16px">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+        </svg>
+        Back
+      </a>
+    </div>
+  </div>
+
+  <!-- Reject info (if rejected) -->
+  {% if st == 'REJECTED' and (order.Reject_Reason or order.Reject_Remarks) %}
+  <div class="reject-info">
+    <strong style="color:#991b1b;">Reject Reason:</strong> {{ order.Reject_Reason or 'Not specified' }}
+    {% if order.Reject_Remarks %}<br><strong>Remarks:</strong> {{ order.Reject_Remarks }}{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ═══ DOCUMENT WRAPPER ═══ -->
+  <div class="doc-wrapper" style="margin-top:var(--sp-4);">
+
+    <!-- Title bar -->
+    <div class="doc-title-bar">Delivery Order</div>
+
+    <!-- Header Info: Created By / Dates -->
+    <div class="info-section">
+      <div class="info-col">
+        <div class="info-col__heading">Order Information</div>
+        <table class="field-table">
+          <tr>
+            <td class="lbl">PO Number</td>
+            <td class="sep">:</td>
+            <td class="val"><strong>{{ order.PO_Number }}</strong></td>
+          </tr>
+          <tr>
+            <td class="lbl">Order Date</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.po_date_fmt or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Loading Date</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.loading_date_fmt or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">On Behalf Of</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.on_behalf_of_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Delivery Terms</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Delivery_Terms or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Payment Terms</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Payment_Terms or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Transportation</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Transportation_Mode or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Currency</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.DOCurrency or 'USD' }}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-col">
+        <div class="info-col__heading">Bill To</div>
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Name</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">SAP Code</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_sap or order.Bill_To_SapCode or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Address</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_address or '—' }}</td>
+          </tr>
+        </table>
+
+        <div class="info-col__heading" style="margin-top:16px;">Ship To</div>
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Name</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Address</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_address or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Point of Exit</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.point_of_exit_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Point of Discharge</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Ship_To_PointOfDischarge or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Final Destination</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Ship_To_FinalDestination or '—' }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Line Items Table (teal header) -->
+    <table class="items-teal">
+      <thead>
+        <tr>
+          <th style="width:35px">#</th>
+          <th style="width:90px">Item ID</th>
+          <th>Item Description</th>
+          <th style="width:80px">UOM</th>
+          <th style="width:80px">Quantity</th>
+          {% if order.show_prices %}
+          <th style="width:90px">Unit Price<span class="currency"> ({{ order.DOCurrency }})</span></th>
+          <th style="width:90px">Total<span class="currency"> ({{ order.DOCurrency }})</span></th>
+          {% endif %}
+          <th style="width:80px">Container</th>
+          <th style="width:60px">Truck</th>
+          <th style="width:80px">Load Seq</th>
+          <th>Remarks</th>
+          {% if order.can_edit %}<th style="width:40px"></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if order.line_items %}
+        {% set ns = namespace(total_qty=0, total_amount=0, total_containers=0, total_trucks=0) %}
+        {% for item in order.line_items %}
+        {% set ns.total_qty = ns.total_qty + (item.Quantity|default(0)|float) %}
+        {% set ns.total_amount = ns.total_amount + (item.Total_Amount|default(0)|float) %}
+        {% set ns.total_containers = ns.total_containers + (item.Container|default(0)|int) %}
+        {% set ns.total_trucks = ns.total_trucks + (item.Truck|default(0)|int) %}
+        <tr>
+          <td style="text-align:center">{{ loop.index }}</td>
+          <td>{{ item.Product_ID or '—' }}</td>
+          <td style="font-weight:var(--font-medium);">{{ item.product_name or '—' }}</td>
+          <td style="text-align:center">{{ item.Unit_Of_Measure or '—' }}</td>
+          <td class="qty-cell">{{ "%.2f"|format(item.Quantity|default(0)|float) }}</td>
+          {% if order.show_prices %}
+          <td class="num">{{ "%.2f"|format(item.Unit_Price|default(0)|float) }}</td>
+          <td class="num" style="font-weight:var(--font-semibold);">{{ "%.2f"|format(item.Total_Amount|default(0)|float)
+            }}</td>
+          {% endif %}
+          <td style="text-align:center">{{ item.Container|default(0) }}</td>
+          <td style="text-align:center">{{ item.Truck|default(0) }}</td>
+          <td style="text-align:center">{{ item.Loading_Sequence or '—' }}</td>
+          <td>{{ item.Remarks or '—' }}</td>
+          {% if order.can_edit %}
+          <td>
+            <form method="post"
+              action="{{ url_for('delivery_orders.delete_item', order_id=order.id, item_id=item.id) }}"
+              style="display:inline">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this item?')"
+                title="Remove" style="padding:2px 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" style="width:14px;height:14px">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+              </button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+
+        <!-- Totals row -->
+        <tr class="totals-row">
+          <td colspan="4" class="total-lbl">Total</td>
+          <td class="total-val">{{ "%.2f"|format(ns.total_qty) }}</td>
+          {% if order.show_prices %}
+          <td></td>
+          <td class="total-val">{{ "%.2f"|format(ns.total_amount) }}</td>
+          {% endif %}
+          <td class="total-val">{{ ns.total_containers }}</td>
+          <td class="total-val">{{ ns.total_trucks }}</td>
+          <td colspan="{{ 2 + (1 if order.can_edit else 0) }}"></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ 11 + (1 if order.can_edit else 0) }}"
+            style="text-align:center;padding:var(--sp-8);color:var(--slate-400);">No line items yet.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+    <!-- Notify Party / Shipping Agent -->
+    <div class="notify-row">
+      <div class="notify-row__left">
+        <u>Notify Party</u> : {{ order.Notify_Party or 'Same as Consignee' }}
+      </div>
+      <div class="notify-row__right">
+        <u>Shipping Agent</u> : {{ order.Shipping_Agent or '—' }}
+      </div>
+    </div>
+
+    <!-- Audit row -->
+    <div class="audit-row">
+      <span><strong>Created By:</strong> {{ order.creator_first }} {{ order.creator_last }}</span>
+      <span><strong>Created On:</strong> {{ order.created_on_fmt or '—' }}</span>
+    </div>
+
+    <!-- QR Code (only after logistics confirmation) -->
+    {% if st == 'CONFIRMED' %}
+    <div class="qr-section">
+      <img src="{{ url_for('delivery_orders.qr_code', order_id=order.id) }}" alt="QR Code" loading="lazy">
+      <div class="qr-section__cap">{{ order.PO_Number }}</div>
+    </div>
+    {% endif %}
+
+  </div><!-- /doc-wrapper -->
+
+  <!-- Add item form (below the document) -->
+  {% if order.can_edit %}
+  <div class="card">
+    <div class="card__body">
+      <div class="add-item-form">
+        <h4
+          style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--sp-3);color:var(--slate-700);">
+          Add Item</h4>
+        <form method="post" action="{{ url_for('delivery_orders.add_item', order_id=order.id) }}">
+          <div class="add-item-grid">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Product</label>
+              <select name="product_id" class="form-select" required>
+                <option value="">Select Product</option>
+                {% for p in order.get('products', []) %}
+                <option value="{{ p.Product_ID }}">{{ p.Name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Quantity</label>
+              <input type="number" name="quantity" class="form-input" step="0.01" min="0" required>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Unit Price</label>
+              <input type="number" name="unit_price" class="form-input" step="0.01" min="0" required>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Container</label>
+              <input type="text" name="container" class="form-input">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Truck</label>
+              <input type="text" name="truck" class="form-input">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Load Seq</label>
+              <input type="number" name="loading_sequence" class="form-input" min="0" value="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Remarks</label>
+              <input type="text" name="remarks" class="form-input">
+            </div>
+            <div style="padding-bottom:2px;">
+              <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+          </div>
+          <input type="hidden" name="currency" value="{{ order.DOCurrency or 'USD' }}">
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ═══ POST-DELIVERY TRACKING — Fujairah Logistics Team ═══ -->
+  {% if st in ('CONFIRMED', 'NEED ATTACHMENT', 'CUSTOMS DOCUMENT UPDATED', 'DELIVERED') %}
+  <div class="post-delivery-section" style="margin-top:var(--sp-6)">
+    <div class="post-delivery-header post-delivery-header--logistics">
+      <span>Fujairah Logistics Team — Post-Delivery Tracking</span>
+      {% if (is_do_logistics or is_do_admin) and st in ('CONFIRMED', 'NEED ATTACHMENT') %}
+      <button type="button" class="btn btn-sm btn-secondary"
+        onclick="document.getElementById('logisticsEditForm').style.display = document.getElementById('logisticsEditForm').style.display === 'none' ? 'block' : 'none'; document.getElementById('logisticsView').style.display = document.getElementById('logisticsView').style.display === 'none' ? 'block' : 'none';">
+        Edit
+      </button>
+      {% endif %}
+    </div>
+    <div class="post-delivery-body">
+      <!-- View mode -->
+      <div id="logisticsView">
+        <div class="post-delivery-grid">
+          <div>
+            <div class="pd-field-label">Exit Document Number (Fujairah Customs)</div>
+            <div class="pd-field-value">{{ order.Exit_Document_Number or '—' }}</div>
+          </div>
+          <div>
+            <div class="pd-field-label">FTA Declaration Number</div>
+            <div class="pd-field-value">{{ order.FTA_Declaration_Number or '—' }}</div>
+          </div>
+          <div>
+            <div class="pd-field-label">SAP Sales Invoice Number</div>
+            <div class="pd-field-value">{{ order.SAP_Sales_Invoice_Number or '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit mode (logistics/admin only, CONFIRMED or NEED ATTACHMENT) -->
+      {% if (is_do_logistics or is_do_admin) and st in ('CONFIRMED', 'NEED ATTACHMENT') %}
+      <div id="logisticsEditForm" style="display:none">
+        <form method="post" action="{{ url_for('delivery_orders.update_logistics', order_id=order.id) }}"
+          enctype="multipart/form-data">
+          <div class="post-delivery-grid">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Exit Document Number (Fujairah Customs)</label>
+              <input type="text" name="exit_document_number" class="form-input"
+                value="{{ order.Exit_Document_Number or '' }}" maxlength="200">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">FTA Declaration Number</label>
+              <input type="text" name="fta_declaration_number" class="form-input"
+                value="{{ order.FTA_Declaration_Number or '' }}" maxlength="200">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">SAP Sales Invoice Number</label>
+              <input type="text" name="sap_sales_invoice_number" class="form-input"
+                value="{{ order.SAP_Sales_Invoice_Number or '' }}" maxlength="200">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:var(--sp-4);">
+            <label class="form-label">Upload Customs Documents <span style="color:#dc2626;">*</span></label>
+            <input type="file" id="logisticsFileInput" class="form-input" multiple
+              onchange="addFilesToList('logistics')" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt,.zip,.rar">
+            <input type="file" name="logistics_attachments" id="logisticsHiddenFiles" multiple required
+              style="display:none">
+            <small style="color:var(--slate-500);">You can select multiple files. Click "Choose Files" again to add
+              more.</small>
+            <div id="logisticsFileList" class="file-list-container"></div>
+          </div>
+          <div style="margin-top:var(--sp-4);display:flex;gap:var(--sp-3);">
+            <button type="submit" class="btn btn-primary btn-sm">Save &amp; Upload Customs Documents</button>
+            <button type="button" class="btn btn-secondary btn-sm"
+              onclick="document.getElementById('logisticsEditForm').style.display='none';document.getElementById('logisticsView').style.display='block';">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ═══ POST-DELIVERY TRACKING — Sales Team ═══ -->
+  {% if st in ('CUSTOMS DOCUMENT UPDATED', 'DELIVERED') %}
+  <div class="post-delivery-section" style="margin-top:var(--sp-4)">
+    <div class="post-delivery-header post-delivery-header--sales">
+      <span>Sales Team — Post-Delivery Tracking</span>
+      {% if (is_do_creator or is_do_admin) and st == 'CUSTOMS DOCUMENT UPDATED' %}
+      <button type="button" class="btn btn-sm btn-secondary"
+        onclick="document.getElementById('salesEditForm').style.display = document.getElementById('salesEditForm').style.display === 'none' ? 'block' : 'none'; document.getElementById('salesView').style.display = document.getElementById('salesView').style.display === 'none' ? 'block' : 'none';">
+        Edit
+      </button>
+      {% endif %}
+    </div>
+    <div class="post-delivery-body">
+      <!-- View mode -->
+      <div id="salesView">
+        <div class="post-delivery-grid">
+          <div>
+            <div class="pd-field-label">Final Exit — Customs BOE Number</div>
+            <div class="pd-field-value">{{ order.Customs_BOE_Number or '—' }}</div>
+          </div>
+          <div>
+            <div class="pd-field-label">Airway Bill / Bill of Lading Number</div>
+            <div class="pd-field-value">{{ order.Airway_Bill_Number or '—' }}</div>
+          </div>
+          <div>
+            <div class="pd-field-label">Final Exit — IEC Code</div>
+            <div class="pd-field-value">{{ order.IEC_Code or '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit mode (creator/admin only, CUSTOMS DOCUMENT UPDATED status) -->
+      {% if (is_do_creator or is_do_admin) and st == 'CUSTOMS DOCUMENT UPDATED' %}
+      <div id="salesEditForm" style="display:none">
+        <form method="post" action="{{ url_for('delivery_orders.update_sales', order_id=order.id) }}"
+          enctype="multipart/form-data">
+          <div class="post-delivery-grid">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Final Exit — Customs BOE Number</label>
+              <input type="text" name="customs_boe_number" class="form-input"
+                value="{{ order.Customs_BOE_Number or '' }}" maxlength="200">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Airway Bill / Bill of Lading Number</label>
+              <input type="text" name="airway_bill_number" class="form-input"
+                value="{{ order.Airway_Bill_Number or '' }}" maxlength="500">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Final Exit — IEC Code</label>
+              <input type="text" name="iec_code" class="form-input" value="{{ order.IEC_Code or '' }}" maxlength="200">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:var(--sp-4);">
+            <label class="form-label">Upload Delivery Documents <span style="color:#dc2626;">*</span></label>
+            <input type="file" id="salesFileInput" class="form-input" multiple onchange="addFilesToList('sales')"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt,.zip,.rar">
+            <input type="file" name="sales_attachments" id="salesHiddenFiles" multiple required style="display:none">
+            <small style="color:var(--slate-500);">You can select multiple files. Click "Choose Files" again to add
+              more.</small>
+            <div id="salesFileList" class="file-list-container"></div>
+          </div>
+          <div style="margin-top:var(--sp-4);display:flex;gap:var(--sp-3);">
+            <button type="submit" class="btn btn-primary btn-sm">Save &amp; Upload Delivery Documents</button>
+            <button type="button" class="btn btn-secondary btn-sm"
+              onclick="document.getElementById('salesEditForm').style.display='none';document.getElementById('salesView').style.display='block';">Cancel</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Attachments section -->
+  {% if order.attachments or st in ('NEED ATTACHMENT', 'CONFIRMED', 'CUSTOMS DOCUMENT UPDATED', 'DELIVERED') %}
+  <div class="card" style="margin-top:var(--sp-6)">
+    <div class="card__header">
+      <span class="card__title">Attachments ({{ order.attachments|length }})</span>
+    </div>
+    <div class="card__body">
+      {% if order.attachments %}
+      <div class="attach-list">
+        {% for att in order.attachments %}
+        <div class="attach-item">
+          <div>
+            <strong>{{ att.FileName }}</strong>
+            <a href="{{ url_for('delivery_orders.view_attachment', order_id=order.id, att_id=att.id) }}" target="_blank"
+              style="margin-left:var(--sp-2);font-size:var(--text-xs);">View</a>
+            <span style="color:var(--slate-500);font-size:var(--text-xs);margin-left:var(--sp-2);">
+              Uploaded {{ att.Created_on.strftime('%d-%b-%Y') if att.Created_on else '' }}
+            </span>
+          </div>
+          {% if is_do_admin or is_do_finance %}
+          <form method="post"
+            action="{{ url_for('delivery_orders.delete_attachment', order_id=order.id, att_id=att.id) }}"
+            style="display:inline">
+            <button type="submit" class="btn btn-danger btn-sm"
+              onclick="return confirm('Remove this attachment?')">Remove</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('delivery_orders.upload_attachment', order_id=order.id) }}"
+        enctype="multipart/form-data" style="margin-top:var(--sp-4);">
+        <div style="display:flex;gap:var(--sp-3);align-items:end;flex-wrap:wrap;">
+          <div class="form-group" style="margin-bottom:0;flex:1;">
+            <label class="form-label">File</label>
+            <input type="file" name="attachment" class="form-input" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- /do-detail -->
+
+<!-- Reject reason modal -->
+<div id="rejectModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 style="color:#991b1b;">Reject Order</h3>
+    <form method="post" action="{{ url_for('delivery_orders.change_status', order_id=order.id) }}">
+      <input type="hidden" name="new_status" value="REJECTED">
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <select name="reject_reason" class="form-select" required>
+          <option value="">Select a reason...</option>
+          {% for reason in reject_reasons %}
+          <option value="{{ reason }}">{{ reason }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Additional Remarks</label>
+        <textarea name="reject_remarks" class="form-input" rows="3"
+          placeholder="Optional additional remarks"></textarea>
+      </div>
+      <div style="display:flex;gap:var(--sp-3);justify-content:flex-end;margin-top:var(--sp-4);">
+        <button type="button" class="btn btn-secondary"
+          onclick="document.getElementById('rejectModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-danger">Reject Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.getElementById('rejectModal').addEventListener('click', function (e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+
+  /* ── Multi-file picker with list & remove ── */
+  var _fileLists = { logistics: [], sales: [] };
+
+  function addFilesToList(section) {
+    var input = document.getElementById(section + 'FileInput');
+    for (var i = 0; i < input.files.length; i++) {
+      _fileLists[section].push(input.files[i]);
+    }
+    input.value = '';           /* reset so same file can be re-added */
+    syncHiddenInput(section);
+    renderFileList(section);
+  }
+
+  function removeFileFromList(section, idx) {
+    _fileLists[section].splice(idx, 1);
+    syncHiddenInput(section);
+    renderFileList(section);
+  }
+
+  function syncHiddenInput(section) {
+    var hidden = document.getElementById(section + 'HiddenFiles');
+    var dt = new DataTransfer();
+    _fileLists[section].forEach(function (f) { dt.items.add(f); });
+    hidden.files = dt.files;
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function fileIcon(name) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    if (['pdf'].includes(ext)) return '\uD83D\uDCC4';        /* page */
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '\uD83D\uDDBC\uFE0F'; /* image */
+    if (['doc', 'docx'].includes(ext)) return '\uD83D\uDCC3'; /* page with curl */
+    if (['xls', 'xlsx'].includes(ext)) return '\uD83D\uDCCA'; /* chart */
+    if (['zip', 'rar', '7z'].includes(ext)) return '\uD83D\uDCE6'; /* package */
+    return '\uD83D\uDCCE';                                    /* paperclip */
+  }
+
+  function renderFileList(section) {
+    var container = document.getElementById(section + 'FileList');
+    var files = _fileLists[section];
+    if (!files.length) { container.innerHTML = ''; return; }
+    var html = '<div class="file-list-header">' + files.length + ' file' + (files.length > 1 ? 's' : '') + ' selected</div>';
+    html += '<ul class="file-list">';
+    files.forEach(function (f, i) {
+      html += '<li class="file-list-item">' +
+        '<span class="file-list-icon">' + fileIcon(f.name) + '</span>' +
+        '<span class="file-list-name" title="' + f.name.replace(/"/g, '&quot;') + '">' + f.name + '</span>' +
+        '<span class="file-list-size">' + formatSize(f.size) + '</span>' +
+        '<button type="button" class="file-list-remove" onclick="removeFileFromList(\'' + section + '\',' + i + ')" title="Remove">&times;</button>' +
+        '</li>';
+    });
+    html += '</ul>';
+    container.innerHTML = html;
+  }
+</script>
+{% endblock %}

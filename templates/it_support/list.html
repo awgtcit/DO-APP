@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}IT Support — Intranet Portal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>IT Support</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <span>IT Support</span>
+    </div>
+  </div>
+  <a href="{{ url_for('it_support.create_form') }}" class="btn btn-primary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    New Ticket
+  </a>
+</div>
+
+<!-- ═══ Stats Row ═══ -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--brand">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/></svg>
+    </div>
+    <div>
+      <div class="stat-card__value">{{ stats.total }}</div>
+      <div class="stat-card__label">Total Tickets</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--amber">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+    </div>
+    <div>
+      <div class="stat-card__value">{{ stats.open }}</div>
+      <div class="stat-card__label">Open</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--brand">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+    </div>
+    <div>
+      <div class="stat-card__value">{{ stats.in_progress }}</div>
+      <div class="stat-card__label">In Progress</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card__icon stat-card__icon--green">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div>
+      <div class="stat-card__value">{{ stats.closed }}</div>
+      <div class="stat-card__label">Closed</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Filters ═══ -->
+<div class="filter-bar">
+  <a href="{{ url_for('it_support.index') }}"
+     class="filter-chip {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('it_support.index', status='open') }}"
+     class="filter-chip {{ 'active' if current_status == 'open' }}">Open</a>
+  <a href="{{ url_for('it_support.index', status='in_progress') }}"
+     class="filter-chip {{ 'active' if current_status == 'in_progress' }}">In Progress</a>
+  <a href="{{ url_for('it_support.index', status='closed') }}"
+     class="filter-chip {{ 'active' if current_status == 'closed' }}">Closed</a>
+
+  <div style="margin-left: auto;">
+    <form method="GET" action="{{ url_for('it_support.index') }}" style="display: flex; gap: var(--sp-2);">
+      {% if current_status %}
+      <input type="hidden" name="status" value="{{ current_status }}">
+      {% endif %}
+      <input type="text" name="q" value="{{ search_query }}" class="form-input"
+             placeholder="Search tickets…" style="width: 240px; padding: var(--sp-1) var(--sp-3); font-size: var(--text-sm);">
+      <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ Tickets Table ═══ -->
+<div class="card">
+  <div class="table-wrap">
+    {% if tickets %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Subject</th>
+          <th>Requester</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr>
+          <td><strong>#{{ t.id }}</strong></td>
+          <td>
+            <a href="{{ url_for('it_support.detail', ticket_id=t.id) }}"
+               style="font-weight: var(--font-medium); color: var(--slate-900);">
+              {{ t.subject | truncate(50) }}
+            </a>
+          </td>
+          <td>{{ t.requester_name or t.requester }}</td>
+          <td>
+            <span class="badge priority-{{ t.priority | lower }}">{{ t.priority }}</span>
+          </td>
+          <td>
+            {% set status_class = {'open': 'amber', 'in_progress': 'brand', 'closed': 'green'} %}
+            <span class="badge badge--{{ status_class.get(t.status, 'slate') }}">
+              {{ t.status | replace('_', ' ') }}
+            </span>
+          </td>
+          <td style="white-space: nowrap; font-size: var(--text-xs); color: var(--slate-500);">
+            {{ t.created_on.strftime('%d %b %Y') if t.created_on else '—' }}
+          </td>
+          <td>
+            <a href="{{ url_for('it_support.detail', ticket_id=t.id) }}" class="btn btn-ghost btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+      <h3>No tickets found</h3>
+      <p>
+        {% if search_query %}
+          No results for "{{ search_query }}". Try a different search term.
+        {% elif current_status %}
+          No {{ current_status | replace('_', ' ') }} tickets at the moment.
+        {% else %}
+          There are no IT support tickets yet. Create one to get started.
+        {% endif %}
+      </p>
+      <a href="{{ url_for('it_support.create_form') }}" class="btn btn-primary">Create Ticket</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if meta.total_pages > 1 %}
+  <div class="card__footer">
+    <div class="pagination">
+      <a href="{{ url_for('it_support.index', page=meta.page - 1, status=current_status, q=search_query) }}"
+         class="pagination__item {{ 'disabled' if meta.page <= 1 }}">
+        &laquo; Prev
+      </a>
+      {% for p in range(1, meta.total_pages + 1) %}
+        {% if p <= 5 or p > meta.total_pages - 2 or (p >= meta.page - 1 and p <= meta.page + 1) %}
+        <a href="{{ url_for('it_support.index', page=p, status=current_status, q=search_query) }}"
+           class="pagination__item {{ 'active' if p == meta.page }}">{{ p }}</a>
+        {% elif p == 6 or p == meta.total_pages - 2 %}
+        <span class="pagination__item disabled">…</span>
+        {% endif %}
+      {% endfor %}
+      <a href="{{ url_for('it_support.index', page=meta.page + 1, status=current_status, q=search_query) }}"
+         class="pagination__item {{ 'disabled' if meta.page >= meta.total_pages }}">
+        Next &raquo;
+      </a>
+    </div>
+    <p class="text-center mt-2" style="font-size: var(--text-xs); color: var(--slate-400);">
+      Showing page {{ meta.page }} of {{ meta.total_pages }} ({{ meta.total }} total tickets)
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

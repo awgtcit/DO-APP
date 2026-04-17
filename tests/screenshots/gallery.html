@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Settings — Playwright Test Screenshots</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background:#f1f5f9; color:#1e293b; padding:32px; }
+  h1 { text-align:center; font-size:28px; margin-bottom:8px; }
+  .subtitle { text-align:center; color:#64748b; margin-bottom:32px; font-size:14px; }
+  .badge { display:inline-block; background:#16a34a; color:#fff; font-size:12px; padding:2px 10px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap:24px; max-width:1400px; margin:0 auto; }
+  .card { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.1); border:1px solid #e2e8f0; }
+  .card__header { padding:12px 16px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px; }
+  .card__num { background:#0f172a; color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0; }
+  .card__title { font-size:14px; font-weight:600; }
+  .card__tag { font-size:11px; color:#64748b; background:#f1f5f9; padding:2px 8px; border-radius:4px; margin-left:auto; }
+  .card__img { width:100%; display:block; cursor:pointer; transition:transform .15s; }
+  .card__img:hover { transform:scale(1.01); }
+
+  /* lightbox */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:999; justify-content:center; align-items:center; cursor:zoom-out; }
+  .overlay.active { display:flex; }
+  .overlay img { max-width:95vw; max-height:95vh; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.4); }
+</style>
+</head>
+<body>
+
+<h1>Admin Settings Module — Test Screenshots <span class="badge">12 / 12 PASSED</span></h1>
+<p class="subtitle">Playwright headed-mode browser tests &bull; captured February 28, 2026</p>
+
+<div class="grid">
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">1</span>
+      <span class="card__title">Sidebar Section Labels</span>
+      <span class="card__tag">Sidebar</span>
+    </div>
+    <img class="card__img" src="01_sidebar_section_labels.png" alt="Sidebar section labels" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">2</span>
+      <span class="card__title">Sidebar SVG Icons</span>
+      <span class="card__tag">Sidebar</span>
+    </div>
+    <img class="card__img" src="02_sidebar_svg_icons.png" alt="Sidebar SVG icons" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">3</span>
+      <span class="card__title">Dashboard Active State</span>
+      <span class="card__tag">Sidebar</span>
+    </div>
+    <img class="card__img" src="03_dashboard_active.png" alt="Dashboard active nav item" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">4</span>
+      <span class="card__title">Admin Settings Link (Admin User)</span>
+      <span class="card__tag">Sidebar</span>
+    </div>
+    <img class="card__img" src="04_admin_settings_link.png" alt="Settings link for admin" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">5</span>
+      <span class="card__title">Settings Dashboard</span>
+      <span class="card__tag">Admin Settings</span>
+    </div>
+    <img class="card__img" src="05_settings_dashboard.png" alt="Settings dashboard" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">6</span>
+      <span class="card__title">Users List</span>
+      <span class="card__tag">User Mgmt</span>
+    </div>
+    <img class="card__img" src="06_users_list.png" alt="Users list" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">7</span>
+      <span class="card__title">User Create Form</span>
+      <span class="card__tag">User Mgmt</span>
+    </div>
+    <img class="card__img" src="07_user_create_form.png" alt="Create user form" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">8</span>
+      <span class="card__title">Restricted Words</span>
+      <span class="card__tag">Security</span>
+    </div>
+    <img class="card__img" src="08_restricted_words.png" alt="Restricted words" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">9</span>
+      <span class="card__title">Module Management</span>
+      <span class="card__tag">Modules</span>
+    </div>
+    <img class="card__img" src="09_modules_list.png" alt="Modules list" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">10</span>
+      <span class="card__title">Workflow Overview</span>
+      <span class="card__tag">Workflow</span>
+    </div>
+    <img class="card__img" src="10_workflow_overview.png" alt="Workflow overview" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">11</span>
+      <span class="card__title">Workflow Statuses (DO)</span>
+      <span class="card__tag">Workflow</span>
+    </div>
+    <img class="card__img" src="11_workflow_statuses.png" alt="Workflow statuses" onclick="openLightbox(this.src)">
+  </div>
+
+  <div class="card">
+    <div class="card__header">
+      <span class="card__num">12</span>
+      <span class="card__title">Workflow Transitions (DO)</span>
+      <span class="card__tag">Workflow</span>
+    </div>
+    <img class="card__img" src="12_workflow_transitions.png" alt="Workflow transitions" onclick="openLightbox(this.src)">
+  </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="overlay" id="lightbox" onclick="this.classList.remove('active')">
+  <img id="lightboxImg" src="" alt="Full-size screenshot">
+</div>
+
+<script>
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+</script>
+
+</body>
+</html>

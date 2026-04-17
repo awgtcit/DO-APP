@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Print — {{ order.PO_Number }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #006633;
+      --teal-dark: #005528;
+      --teal-light: #e8f5e9;
+      --pale-blue: #e8f5e9;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-500: #64748b;
+      --gray-700: #334155;
+      --gray-900: #0f172a;
+      --white: #ffffff;
+      --red-600: #dc2626;
+      --green-600: #16a34a;
+      --amber-600: #d97706;
+      --cyan-600: #006633;
+      --purple-600: #475569;
+      --font: 'Inter', Arial, Helvetica, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      font-size: 11px;
+      color: var(--gray-900);
+      background: var(--white);
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    @media print {
+      @page { size: landscape; margin: 8mm; }
+      body { padding: 0; font-size: 10px; }
+      .no-print { display: none !important; }
+      .doc-wrapper { box-shadow: none !important; border: none !important; }
+    }
+
+    /* ── Toolbar ────────────────────────────────────────── */
+    .print-toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      align-items: center;
+    }
+    .print-toolbar button {
+      padding: 8px 20px;
+      border: 1px solid var(--gray-300);
+      background: var(--white);
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font);
+      font-weight: 500;
+      transition: all .15s;
+    }
+    .print-toolbar button:hover { background: var(--gray-100); }
+    .print-toolbar .btn-print {
+      background: var(--teal);
+      color: var(--white);
+      border-color: var(--teal);
+    }
+    .print-toolbar .btn-print:hover { background: var(--teal-dark); }
+    .print-toolbar__status { margin-left: auto; }
+
+    /* ── Document wrapper ───────────────────────────────── */
+    .doc-wrapper {
+      max-width: 1080px;
+      margin: 0 auto;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+
+    /* ── Title ───────────────────────────────────────────── */
+    .doc-title {
+      text-align: center;
+      padding: 10px 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gray-900);
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    /* ── Info sections (header, bill/ship) ───────────────── */
+    .info-section {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .info-col {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding: 10px 14px;
+    }
+    .info-col + .info-col {
+      border-left: 1px solid var(--gray-200);
+    }
+    .info-col__heading {
+      font-weight: 700;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--gray-900);
+    }
+
+    .field-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .field-table td {
+      padding: 2px 0;
+      font-size: 11px;
+      vertical-align: top;
+    }
+    .field-table .lbl {
+      width: 180px;
+      font-weight: 600;
+      color: var(--gray-700);
+      white-space: nowrap;
+    }
+    .field-table .sep {
+      width: 12px;
+      text-align: center;
+      color: var(--gray-500);
+    }
+    .field-table .val {
+      color: var(--gray-900);
+    }
+
+    /* ── Items table ────────────────────────────────────── */
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .items-table thead th {
+      background: var(--teal);
+      color: var(--white);
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      padding: 7px 8px;
+      text-align: center;
+      border: 1px solid var(--white);
+    }
+    .items-table tbody td {
+      padding: 5px 8px;
+      font-size: 10.5px;
+      border: 1px solid #eee;
+      vertical-align: middle;
+    }
+    .items-table tbody td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .items-table tbody td.qty-cell {
+      background: var(--pale-blue);
+      font-weight: 700;
+      text-align: right;
+    }
+    .items-table tbody tr:hover { background: var(--gray-50); }
+
+    .items-table .totals-row td {
+      background: var(--gray-100);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 7px 8px;
+      border: none;
+    }
+    .items-table .totals-row .total-val {
+      color: var(--teal);
+      font-weight: 700;
+      text-align: right;
+    }
+    .items-table .totals-row .total-label {
+      text-align: right;
+      font-weight: 700;
+    }
+    .items-table .totals-row .empty-cell { border: none; }
+
+    /* ── Notify / Shipping row ──────────────────────────── */
+    .notify-row {
+      display: table;
+      width: 100%;
+      padding: 8px 14px;
+      border-top: 1px solid var(--gray-200);
+      font-size: 11px;
+    }
+    .notify-row__left,
+    .notify-row__right {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+    }
+    .notify-row__right { text-align: right; }
+    .notify-row u {
+      text-decoration-color: var(--teal);
+      text-underline-offset: 2px;
+      font-weight: 600;
+      color: var(--teal-dark);
+    }
+
+    /* ── QR code ────────────────────────────────────────── */
+    .qr-section {
+      text-align: center;
+      padding: 16px 0 20px;
+      border-top: 1px solid var(--gray-200);
+    }
+    .qr-section img {
+      width: 180px;
+      height: 180px;
+      image-rendering: pixelated;
+    }
+    .qr-section__caption {
+      font-size: 9px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    /* ── Status tag ──────────────────────────────────────── */
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 100px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .status-tag--draft       { background: #f1f5f9; color: #475569; }
+    .status-tag--submitted   { background: #fee2e2; color: #b91c1c; }
+    .status-tag--confirmed   { background: #dcfce7; color: #15803d; }
+    .status-tag--price-agreed { background: #e8f5e9; color: #006633; }
+    .status-tag--need-attachment { background: #fef9c3; color: #a16207; }
+    .status-tag--rejected    { background: #fecaca; color: #991b1b; }
+    .status-tag--cancelled   { background: #f1f5f9; color: #475569; }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .currency { 
+      font-size: 0.85em; 
+      color: inherit;
+      font-weight: normal;
+      margin-left: 2px;
+      padding: 0 4px;
+    }
+  </style>
+</head>
+<body>
+  {% set st = order.Status|default('')|upper %}
+
+  <!-- Toolbar (hidden when printing) -->
+  <div class="print-toolbar no-print">
+    <button class="btn-print" onclick="window.print()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:14px;height:14px;vertical-align:-2px;margin-right:4px"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m0 0a48.45 48.45 0 018.5 0"/></svg>
+      Print
+    </button>
+    <button onclick="window.close()">Close</button>
+    <div class="print-toolbar__status">
+      <span class="status-tag status-tag--{{ st|lower|replace(' ', '-') }}">
+        <span class="status-dot"></span> {{ st }}
+      </span>
+    </div>
+  </div>
+
+  <!-- ═══ DOCUMENT ═══ -->
+  <div class="doc-wrapper">
+
+    <!-- Title -->
+    <div class="doc-title">Delivery Order</div>
+
+    <!-- Header Info: Created By / Dates -->
+    <div class="info-section">
+      <div class="info-col">
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Created By</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.creator_first }} {{ order.creator_last }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">On Behalf Of</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.on_behalf_of_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Date: (dd/mm/yyyy)</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.po_date_fmt or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">P. O. Number</td>
+            <td class="sep">:</td>
+            <td class="val"><strong>{{ order.PO_Number }}</strong></td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-col">
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Loading Date: (dd/mm/yyyy)</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.loading_date_fmt or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Delivery Terms</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Delivery_Terms or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Payment Terms</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Payment_Terms or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Transportation Mode</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Transportation_Mode or '—' }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bill To / Ship To -->
+    <div class="info-section">
+      <div class="info-col">
+        <div class="info-col__heading">Bill To</div>
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Sap Code</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_sap or order.Bill_To_SapCode or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Name</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Address</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_address or '—' }}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-col">
+        <div class="info-col__heading">Ship To</div>
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Sap Code</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_sap or order.Ship_To_SapCode or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Name</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Address</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_address or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Point Of Exit</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.point_of_exit_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Point Of Discharge</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Ship_To_PointOfDischarge or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Final Destination</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.Ship_To_FinalDestination or '—' }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Line Items Table -->
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width:90px">Item ID</th>
+          <th>Item Description</th>
+          <th style="width:100px">Unit of Measure</th>
+          <th style="width:80px">Quantity</th>
+          {% if can_see_prices %}
+          <th style="width:90px">Unit Price<span class="currency"> ({{ order.DOCurrency }})</span></th>
+          <th style="width:90px">Total Price<span class="currency"> ({{ order.DOCurrency }})</span></th>
+          {% endif %}
+          <th style="width:80px">Container</th>
+          <th style="width:60px">Truck</th>
+          <th style="width:120px">Sequence of Loading</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(total_qty=0, total_amount=0, total_containers=0, total_trucks=0) %}
+        {% for item in order.line_items %}
+        {% set ns.total_qty = ns.total_qty + (item.Quantity|default(0)|float) %}
+        {% set ns.total_amount = ns.total_amount + (item.Total_Amount|default(0)|float) %}
+        {% set ns.total_containers = ns.total_containers + (item.Container|default(0)|int) %}
+        {% set ns.total_trucks = ns.total_trucks + (item.Truck|default(0)|int) %}
+        <tr>
+          <td>{{ item.Product_ID or '—' }}</td>
+          <td>{{ item.product_name or '—' }}</td>
+          <td style="text-align:center">{{ item.Unit_Of_Measure or '—' }}</td>
+          <td class="qty-cell">{{ "%.2f"|format(item.Quantity|default(0)|float) }}</td>
+          {% if can_see_prices %}
+          <td class="num">{{ "%.2f"|format(item.Unit_Price|default(0)|float) }}</td>
+          <td class="num">{{ "%.2f"|format(item.Total_Amount|default(0)|float) }}</td>
+          {% endif %}
+          <td style="text-align:center">{{ item.Container|default(0) }}</td>
+          <td style="text-align:center">{{ item.Truck|default(0) }}</td>
+          <td style="text-align:center">{{ item.Loading_Sequence or '' }}</td>
+          <td>{{ item.Remarks or '' }}</td>
+        </tr>
+        {% endfor %}
+
+        <!-- Totals row -->
+        <tr class="totals-row">
+          <td colspan="3" class="total-label">Total</td>
+          <td class="total-val">{{ "%.2f"|format(ns.total_qty) }}</td>
+          {% if can_see_prices %}
+          <td class="empty-cell"></td>
+          <td class="total-val">{{ "%.2f"|format(ns.total_amount) }}</td>
+          {% endif %}
+          <td class="total-val">{{ ns.total_containers }}</td>
+          <td class="total-val">{{ ns.total_trucks }}</td>
+          <td class="empty-cell"></td>
+          <td class="empty-cell"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Notify Party / Shipping Agent row -->
+    <div class="notify-row">
+      <div class="notify-row__left">
+        <u>Notify Party</u>:{{ order.Notify_Party or 'Same as Consignee' }}
+      </div>
+      <div class="notify-row__right">
+        <u>Shipping Agent</u>:{{ order.Shipping_Agent or '—' }}
+      </div>
+    </div>
+
+    <!-- QR Code (only after logistics confirmation) -->
+    {% if st == 'CONFIRMED' %}
+    <div class="qr-section">
+      <img src="{{ url_for('delivery_orders.qr_code', order_id=order.id) }}" alt="QR Code">
+      <div class="qr-section__caption">{{ order.PO_Number }}</div>
+    </div>
+    {% endif %}
+
+  </div>
+</body>
+</html>

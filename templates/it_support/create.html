@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Ticket' if editing else 'New Ticket' }} — IT Support{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ 'Edit Ticket #' ~ form.id if editing else 'Create New Ticket' }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <a href="{{ url_for('it_support.index') }}">IT Support</a>
+      <span>/</span>
+      <span>{{ 'Edit' if editing else 'New' }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 720px;">
+  <div class="card__header">
+    <h2 class="card__title">Ticket Details</h2>
+  </div>
+  <form method="POST"
+        action="{{ url_for('it_support.edit_post', ticket_id=form.id) if editing else url_for('it_support.create_post') }}">
+    <div class="card__body">
+      <div class="form-group">
+        <label for="subject" class="form-label">Subject *</label>
+        <input type="text" id="subject" name="subject" class="form-input"
+               value="{{ form.subject if form else '' }}"
+               placeholder="Brief description of the issue" required maxlength="200">
+        <p class="form-hint">Minimum 5 characters.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="priority" class="form-label">Priority *</label>
+          <select id="priority" name="priority" class="form-select" required>
+            {% set p = (form.priority if form else 'medium') | lower %}
+            <option value="low"      {{ 'selected' if p == 'low' }}>Low</option>
+            <option value="medium"   {{ 'selected' if p == 'medium' }}>Medium</option>
+            <option value="high"     {{ 'selected' if p == 'high' }}>High</option>
+            <option value="critical" {{ 'selected' if p == 'critical' }}>Critical</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="on_behalf_of" class="form-label">On Behalf Of</label>
+          <input type="text" id="on_behalf_of" name="on_behalf_of" class="form-input"
+                 value="{{ form.onBehalfOf or (form.on_behalf_of if form else '') }}"
+                 placeholder="Leave blank if submitting for yourself">
+        </div>
+      </div>
+
+      {% if editing %}
+      <div class="form-group">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+          {% set s = (form.status if form else 'open') | lower %}
+          <option value="open"        {{ 'selected' if s == 'open' }}>Open</option>
+          <option value="in_progress" {{ 'selected' if s == 'in_progress' }}>In Progress</option>
+          <option value="closed"      {{ 'selected' if s == 'closed' }}>Closed</option>
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="summary" class="form-label">Description *</label>
+        <textarea id="summary" name="summary" class="form-textarea" rows="6"
+                  placeholder="Detailed description of the issue, steps to reproduce, etc."
+                  required>{{ form.summary if form else '' }}</textarea>
+        <p class="form-hint">Minimum 10 characters. Be as detailed as possible.</p>
+      </div>
+    </div>
+
+    <div class="card__footer" style="display: flex; justify-content: flex-end; gap: var(--sp-3);">
+      <a href="{{ url_for('it_support.index') }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {{ 'Update Ticket' if editing else 'Create Ticket' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

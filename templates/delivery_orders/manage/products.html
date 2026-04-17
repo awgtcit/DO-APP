@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Products — Delivery Orders{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Products</h1>
+  <a href="{{ url_for('do_management.product_create') }}" class="btn btn-primary">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    New Product
+  </a>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product ID</th>
+            <th>Name</th>
+            <th>UOM</th>
+            <th>Sales Manager</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ p.Product_ID }}</td>
+            <td>{{ p.Name }}</td>
+            <td>{{ p.Unit_Of_Measure or '—' }}</td>
+            <td>{{ p.manager_name or '—' }}</td>
+            <td>
+              <a href="{{ url_for('do_management.product_edit', pk=p.id) }}"
+                 class="btn btn-sm btn-secondary" title="Edit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>
+                Edit
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="color:var(--slate-400);">No products found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:var(--sp-4);">
+  <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">
+    &larr; Back to Dashboard
+  </a>
+</div>
+{% endblock %}

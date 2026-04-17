@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}GRMS — Delivery Orders{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>GRMS — Goods Return Management</h1>
+</div>
+
+<!-- Status filter -->
+<div class="card" style="margin-bottom:var(--sp-4);">
+  <div class="card__body" style="padding:var(--sp-3) var(--sp-4);">
+    <form method="GET" style="display:flex;gap:var(--sp-3);align-items:center;">
+      <label class="form-label" style="margin-bottom:0;">Status:</label>
+      <select name="status" class="form-select" style="width:200px;" onchange="this.form.submit()">
+        {% for s in ['ALL', 'DRAFT', 'SUBMITTED', 'CONFIRMED', 'CANCELLED'] %}
+        <option value="{{ s }}" {{ 'selected' if current_status == s else '' }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Receipt No</th>
+            <th>PO Number</th>
+            <th>On Behalf Of</th>
+            <th>Received On</th>
+            <th>Items</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in receipts %}
+          <tr>
+            <td>{{ loop.index + (page - 1) * 25 }}</td>
+            <td>{{ r.Receipt_Number }}</td>
+            <td>{{ r.PO_Number }}</td>
+            <td>{{ r.on_behalf_of or '—' }}</td>
+            <td>{{ r.received_on or '—' }}</td>
+            <td>{{ r.item_count }}</td>
+            <td>
+              {% set st = r.Status|lower %}
+              <span class="badge {% if st == 'confirmed' %}badge--green{% elif st == 'submitted' %}badge--brand{% elif st == 'draft' %}badge--slate{% elif st == 'cancelled' %}badge--red{% else %}badge--amber{% endif %}">{{ r.Status }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('do_management.grms_detail', receipt_id=r.id) }}"
+                 class="btn btn-sm btn-secondary" title="View">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                View
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-center" style="color:var(--slate-400);">No receipts found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination" style="margin-top:var(--sp-4);">
+  {% if page > 1 %}
+    <a href="?status={{ current_status }}&page={{ page - 1 }}" class="pagination__item">&laquo; Prev</a>
+  {% endif %}
+  <span class="pagination__item active">Page {{ page }} of {{ total_pages }} ({{ total }} receipts)</span>
+  {% if page < total_pages %}
+    <a href="?status={{ current_status }}&page={{ page + 1 }}" class="pagination__item">Next &raquo;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div style="margin-top:var(--sp-4);">
+  <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">
+    &larr; Back to Dashboard
+  </a>
+</div>
+{% endblock %}

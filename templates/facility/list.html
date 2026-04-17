@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Facility Requests{% endblock %}
+
+{% block head %}
+<style>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+  text-align: center;
+}
+.stat-card__num  { font-size: var(--text-2xl); font-weight: var(--font-bold); }
+.stat-card__lbl  { font-size: var(--text-xs); color: var(--slate-500); font-weight: var(--font-semibold); }
+.stat-card--total .stat-card__num { color: #334155; }
+.stat-card--open  .stat-card__num { color: #b91c1c; }
+.stat-card--closed .stat-card__num { color: #15803d; }
+
+.filter-bar {
+  display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-4); align-items: center;
+}
+.chip {
+  display: inline-flex; align-items: center;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs); font-weight: var(--font-semibold);
+  text-decoration: none;
+  border: 1px solid var(--slate-200);
+  background: var(--white); color: var(--slate-600);
+  cursor: pointer; transition: all .15s var(--ease);
+}
+.chip:hover { background: var(--slate-50); }
+.chip.active { background: var(--brand-600); color: var(--white); border-color: var(--brand-600); }
+
+.row-overdue { background: #fef2f2 !important; }
+.row-closed  { background: #f0fdf4 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Facility Requests</h1>
+    <div class="breadcrumb page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <span>Facility</span>
+    </div>
+  </div>
+  <a href="{{ url_for('facility.create_form') }}" class="btn btn-primary" data-testid="btn-new-request">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    New Request
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card stat-card--total">
+    <div class="stat-card__num">{{ stats.total }}</div>
+    <div class="stat-card__lbl">Total</div>
+  </div>
+  <div class="stat-card stat-card--open">
+    <div class="stat-card__num">{{ stats.open }}</div>
+    <div class="stat-card__lbl">Open</div>
+  </div>
+  <div class="stat-card stat-card--closed">
+    <div class="stat-card__num">{{ stats.closed }}</div>
+    <div class="stat-card__lbl">Closed</div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card">
+  <div class="card__header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-3);">
+    <div class="filter-bar">
+      <a href="{{ url_for('facility.index', q=search_query) }}"
+         class="chip {{ 'active' if not current_status }}">All</a>
+      <a href="{{ url_for('facility.index', status='open', q=search_query) }}"
+         class="chip {{ 'active' if current_status == 'open' }}">Open</a>
+      <a href="{{ url_for('facility.index', status='closed', q=search_query) }}"
+         class="chip {{ 'active' if current_status == 'closed' }}">Closed</a>
+    </div>
+    <form method="get" action="{{ url_for('facility.index') }}" style="display:flex;gap:var(--sp-2);">
+      {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+      <input type="text" name="q" class="form-input" placeholder="Search…" value="{{ search_query or '' }}" style="width:200px;" data-testid="search-input">
+      <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    </form>
+  </div>
+
+  {% if requests %}
+  <div style="overflow-x:auto;">
+    <table class="data-table" data-testid="facility-table">
+      <thead>
+        <tr>
+          <th style="width:60px;">ID</th>
+          <th>Subject</th>
+          <th>Site</th>
+          {% if is_admin %}<th>Requester</th>{% endif %}
+          <th>Status</th>
+          <th>Created</th>
+          <th style="width:70px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        {% set age = ((now() - r.created_on).days if r.created_on else 0) %}
+        <tr class="{{ 'row-closed' if r.status == 'closed' else ('row-overdue' if age >= 30 and r.status == 'open' else '') }}">
+          <td><strong>#{{ r.id }}</strong></td>
+          <td>
+            <a href="{{ url_for('facility.detail', req_id=r.id) }}"
+               style="font-weight: var(--font-medium); color: var(--slate-900);">
+              {{ r.subject|truncate(50) }}
+            </a>
+          </td>
+          <td style="font-size: var(--text-xs); color: var(--slate-500);">{{ r.site|replace('_', ' ') }}</td>
+          {% if is_admin %}
+          <td style="font-size: var(--text-xs);">{{ r.FirstName }} {{ r.LastName }}</td>
+          {% endif %}
+          <td>
+            <span class="badge badge--{{ 'green' if r.status == 'closed' else 'amber' }}">{{ r.status }}</span>
+          </td>
+          <td style="white-space: nowrap; font-size: var(--text-xs); color: var(--slate-500);">
+            {{ r.created_on.strftime('%d %b %Y') if r.created_on else '—' }}
+          </td>
+          <td>
+            <a href="{{ url_for('facility.detail', req_id=r.id) }}" class="btn btn-ghost btn-sm">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.384 3.065A1.008 1.008 0 014.5 17.3V6.7a1.008 1.008 0 011.536-.936l5.384 3.065a1.008 1.008 0 010 1.87z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5h6a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0119.5 19.5h-6"/></svg>
+    <h3>No requests found</h3>
+    <p>{% if search_query %}No results for "{{ search_query }}".{% else %}No facility requests yet.{% endif %}</p>
+    <a href="{{ url_for('facility.create_form') }}" class="btn btn-primary">New Request</a>
+  </div>
+  {% endif %}
+
+  {% if meta.total_pages > 1 %}
+  <div class="card__footer">
+    <div class="pagination">
+      <a href="{{ url_for('facility.index', page=meta.page - 1, status=current_status, q=search_query) }}"
+         class="pagination__item {{ 'disabled' if meta.page <= 1 }}">&laquo; Prev</a>
+      {% for p in range(1, meta.total_pages + 1) %}
+        {% if p <= 5 or p > meta.total_pages - 2 or (p >= meta.page - 1 and p <= meta.page + 1) %}
+        <a href="{{ url_for('facility.index', page=p, status=current_status, q=search_query) }}"
+           class="pagination__item {{ 'active' if p == meta.page }}">{{ p }}</a>
+        {% elif p == 6 or p == meta.total_pages - 2 %}
+        <span class="pagination__item disabled">…</span>
+        {% endif %}
+      {% endfor %}
+      <a href="{{ url_for('facility.index', page=meta.page + 1, status=current_status, q=search_query) }}"
+         class="pagination__item {{ 'disabled' if meta.page >= meta.total_pages }}">Next &raquo;</a>
+    </div>
+    <p class="text-center mt-2" style="font-size: var(--text-xs); color: var(--slate-400);">
+      Page {{ meta.page }} of {{ meta.total_pages }} ({{ meta.total }} requests)
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Make `now()` available in Jinja
+</script>
+{% endblock %}

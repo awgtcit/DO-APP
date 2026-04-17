@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Reports — Delivery Orders{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Products Sold Report</h1>
+</div>
+
+<!-- Date filter -->
+<div class="card" style="margin-bottom:var(--sp-4);">
+  <div class="card__body" style="padding:var(--sp-3) var(--sp-4);">
+    <form method="GET" style="display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap;">
+      <label class="form-label" style="margin-bottom:0;">From:</label>
+      <input type="date" name="date_from" class="form-input" style="width:180px;"
+             value="{{ date_from }}">
+      <label class="form-label" style="margin-bottom:0;">To:</label>
+      <input type="date" name="date_to" class="form-input" style="width:180px;"
+             value="{{ date_to }}">
+      <button type="submit" class="btn btn-primary">Apply</button>
+      {% if date_from or date_to %}
+      <a href="{{ url_for('do_management.reports') }}" class="btn btn-secondary">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__body">
+    <div style="margin-bottom:var(--sp-3);display:flex;gap:var(--sp-2);">
+      <button onclick="exportReportCSV()" class="btn btn-sm btn-secondary" title="Download CSV">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+        CSV
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table" id="reportTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product ID</th>
+            <th>Product Name</th>
+            <th>UOM</th>
+            <th>Total Qty Sold</th>
+            <th>Order Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report_data %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ row.Product_ID }}</td>
+            <td>{{ row.product_name or '—' }}</td>
+            <td>{{ row.uom or '—' }}</td>
+            <td>{{ row.total_qty }}</td>
+            <td>{{ row.order_count }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center" style="color:var(--slate-400);">
+            No data for the selected period.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:var(--sp-4);">
+  <a href="{{ url_for('delivery_orders.dashboard') }}" class="btn btn-secondary">
+    &larr; Back to Dashboard
+  </a>
+</div>
+
+<script>
+function exportReportCSV(){
+  const table = document.getElementById('reportTable');
+  const rows = table.querySelectorAll('tr');
+  let csv = [];
+  rows.forEach(r => {
+    const cols = r.querySelectorAll('th, td');
+    const row = Array.from(cols).map(c => '"' + c.textContent.trim().replace(/"/g, '""') + '"');
+    csv.push(row.join(','));
+  });
+  const blob = new Blob([csv.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'products_sold_report.csv';
+  a.click();
+}
+</script>
+{% endblock %}

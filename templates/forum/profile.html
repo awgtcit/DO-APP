@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.full_name }} — Employee Profile{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-header__left">
+    <h1>Employee Profile</h1>
+    <div class="breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Home</a>
+      <span>/</span>
+      <a href="{{ url_for('forum.index') }}">Employee Forum</a>
+      <span>/</span>
+      <span>{{ employee.full_name }}</span>
+    </div>
+  </div>
+  <div class="page-header__right">
+    <a href="{{ url_for('forum.index') }}" class="btn btn-ghost btn-sm">&larr; Back to Directory</a>
+  </div>
+</div>
+
+<!-- Profile card -->
+<div class="card" style="max-width:640px;">
+  <div class="card__body" style="padding:var(--sp-8);text-align:center;">
+    <!-- Avatar -->
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--brand-600);color:#fff;
+                display:inline-flex;align-items:center;justify-content:center;
+                font-size:28px;font-weight:600;margin-bottom:var(--sp-4);">
+      {{ employee.initials }}
+    </div>
+
+    <h2 style="margin:0 0 var(--sp-1) 0;">{{ employee.full_name }}</h2>
+    <p style="color:var(--slate-500);margin:0 0 var(--sp-6) 0;">
+      {{ employee.Department or 'No Department' }}
+    </p>
+
+    <!-- Info grid -->
+    <div style="text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4) var(--sp-8);">
+      <div>
+        <div class="form-label" style="margin-bottom:2px;">Email</div>
+        <div>{{ employee.EmailAddress or '—' }}</div>
+      </div>
+      <div>
+        <div class="form-label" style="margin-bottom:2px;">Contact</div>
+        <div>{{ employee.ContactNo or '—' }}</div>
+      </div>
+      <div>
+        <div class="form-label" style="margin-bottom:2px;">Employee ID</div>
+        <div>{{ employee.EmpID }}</div>
+      </div>
+      <div>
+        <div class="form-label" style="margin-bottom:2px;">Date of Birth</div>
+        <div>{{ employee.DateOfBirth.strftime('%d %B %Y') if employee.DateOfBirth else '—' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

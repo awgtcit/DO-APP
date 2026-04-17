@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create User' if mode == 'create' else 'Edit User' }} — Admin Settings{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close" onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:700px;margin:0 auto;padding:var(--sp-6);">
+  <!-- Breadcrumb -->
+  <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
+    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <span style="color:var(--slate-300);">/</span>
+    <a href="{{ url_for('admin_settings.users') }}" style="color:var(--slate-400);text-decoration:none;">Users</a>
+    <span style="color:var(--slate-300);">/</span>
+    <span style="color:var(--slate-600);">{{ 'Create' if mode == 'create' else 'Edit' }}</span>
+  </div>
+
+  <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);margin-bottom:var(--sp-6);">
+    {{ 'Create New User' if mode == 'create' else 'Edit User #' ~ user.EmpID }}
+  </h1>
+
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
+    <form method="POST">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+        <div>
+          <label class="form-label">First Name *</label>
+          <input type="text" name="first_name" class="form-input" value="{{ data.get('first_name', '') }}" required>
+        </div>
+        <div>
+          <label class="form-label">Last Name *</label>
+          <input type="text" name="last_name" class="form-input" value="{{ data.get('last_name', '') }}" required>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+        <div>
+          <label class="form-label">Email *</label>
+          <input type="email" name="email" class="form-input" value="{{ data.get('email', '') }}" required>
+        </div>
+        <div>
+          <label class="form-label">Username *</label>
+          <input type="text" name="username" class="form-input" value="{{ data.get('username', '') }}" required>
+        </div>
+      </div>
+
+      {% if mode == 'create' %}
+      <div style="margin-bottom:var(--sp-4);">
+        <label class="form-label">Password *</label>
+        <input type="password" name="password" class="form-input" required minlength="6">
+        <div class="form-hint">Minimum 6 characters.</div>
+      </div>
+      {% endif %}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+        <div>
+          <label class="form-label">Department *</label>
+          <select name="department_id" class="form-select" required>
+            <option value="">Select department…</option>
+            {% for d in departments %}
+            <option value="{{ d.DepartmentID }}" {{ 'selected' if data.get('department_id')|string == d.DepartmentID|string }}>{{ d.DepartmentName }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Designation</label>
+          <select name="designation_id" class="form-select">
+            <option value="">Select designation…</option>
+            {% for d in designations %}
+            <option value="{{ d.DesignationID }}" {{ 'selected' if data.get('designation_id')|string == d.DesignationID|string }}>{{ d.DesignationName }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:var(--sp-6);">
+        <label class="form-label">Role Group</label>
+        <select name="group_id" class="form-select" style="max-width:200px;">
+          <option value="0" {{ 'selected' if not data.get('group_id') or data.get('group_id')|string == '0' }}>Regular User</option>
+          <option value="1" {{ 'selected' if data.get('group_id')|string == '1' }}>Admin (GroupID 1)</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:var(--sp-3);justify-content:flex-end;border-top:1px solid var(--slate-100);padding-top:var(--sp-4);">
+        <a href="{{ url_for('admin_settings.users') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">{{ 'Create User' if mode == 'create' else 'Save Changes' }}</button>
+      </div>
+    </form>
+  </div>
+
+  {% if mode == 'edit' %}
+  <!-- Password Reset -->
+  <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);margin-top:var(--sp-6);">
+    <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Reset Password</h2>
+    <form method="POST" action="{{ url_for('admin_settings.user_reset_password', emp_id=user.EmpID) }}">
+      <div style="display:flex;gap:var(--sp-3);align-items:flex-end;">
+        <div style="flex:1;">
+          <label class="form-label">New Password</label>
+          <input type="password" name="new_password" class="form-input" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Reset this user\'s password?');">Reset Password</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+</script>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Facility Request #{{ req.id }}{% endblock %}
+
+{% block head %}
+<style>
+.detail-section { margin-bottom: var(--sp-8); }
+.detail-section__title {
+  font-size: var(--text-base); font-weight: var(--font-bold); color: var(--slate-900);
+  margin-bottom: var(--sp-4); padding-bottom: var(--sp-2);
+  border-bottom: 2px solid var(--brand-500); display: inline-block;
+}
+.detail-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); }
+@media (max-width: 768px) { .detail-two-col { grid-template-columns: 1fr; } }
+.detail-field { margin-bottom: var(--sp-4); }
+.detail-field__label {
+  font-size: var(--text-xs); font-weight: var(--font-semibold);
+  color: var(--slate-500); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px;
+}
+.detail-field__value { font-size: var(--text-sm); color: var(--slate-800); font-weight: var(--font-medium); }
+
+.status-large {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4); font-size: var(--text-sm); font-weight: var(--font-bold);
+  border-radius: var(--radius-full); text-transform: uppercase; letter-spacing: .03em;
+}
+.status-large--open   { background: #fef3c7; color: #a16207; }
+.status-large--closed { background: #dcfce7; color: #15803d; }
+.overdue-badge { background: #fecaca; color: #991b1b; }
+
+.comment-list { list-style: none; padding: 0; margin: 0; }
+.comment-item {
+  padding: var(--sp-4); border: 1px solid var(--slate-200); border-radius: var(--radius-md);
+  margin-bottom: var(--sp-3); background: var(--white);
+}
+.comment-item--system { background: var(--slate-50); border-left: 3px solid var(--brand-400); }
+.comment-meta {
+  display: flex; gap: var(--sp-2); font-size: var(--text-xs); color: var(--slate-500);
+  margin-bottom: var(--sp-2); flex-wrap: wrap;
+}
+.comment-body { font-size: var(--text-sm); color: var(--slate-700); line-height: 1.6; }
+
+.reason-modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 999;
+  align-items: center; justify-content: center;
+}
+.reason-modal.open { display: flex; }
+.reason-modal__box {
+  background: #fff; border-radius: var(--radius-lg); padding: var(--sp-6);
+  max-width: 420px; width: 90%; box-shadow: var(--shadow-lg);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Facility Request #{{ req.id }}</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('facility.index') }}">Facility</a>
+      <span>/</span>
+      <span>#{{ req.id }}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;">
+    <span class="status-large status-large--{{ req.status }}" data-testid="status-badge">{{ req.status }}</span>
+    {% if req.overdue and req.status == 'open' %}
+    <span class="status-large overdue-badge">{{ req.age_days }} days</span>
+    {% endif %}
+
+    {% if req.status == 'open' and is_admin %}
+    <button type="button" class="btn btn-danger btn-sm" onclick="openReasonModal('close')">Close</button>
+    {% endif %}
+    {% if req.status == 'closed' %}
+    <button type="button" class="btn btn-secondary btn-sm" onclick="openReasonModal('reopen')">Re-open</button>
+    {% endif %}
+
+    <a href="{{ url_for('facility.index') }}" class="btn btn-ghost">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+      Back
+    </a>
+  </div>
+</div>
+
+<!-- Request details -->
+<div class="card">
+  <div class="card__body">
+    <div class="detail-two-col">
+      <div>
+        <div class="detail-section">
+          <div class="detail-section__title">Request Details</div>
+          <div class="detail-field">
+            <div class="detail-field__label">Subject</div>
+            <div class="detail-field__value">{{ req.subject }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Site</div>
+            <div class="detail-field__value">{{ req.site|replace('_', ' ') }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Description</div>
+            <div class="detail-field__value" style="white-space:pre-wrap;">{{ req.summary_html|safe }}</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="detail-section">
+          <div class="detail-section__title">Info</div>
+          <div class="detail-field">
+            <div class="detail-field__label">Requester</div>
+            <div class="detail-field__value">{{ req.FirstName }} {{ req.LastName }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Created</div>
+            <div class="detail-field__value">{{ req.created_on.strftime('%d %b %Y %H:%M') if req.created_on else '—' }}</div>
+          </div>
+          <div class="detail-field">
+            <div class="detail-field__label">Age</div>
+            <div class="detail-field__value">{{ req.age_days }} days</div>
+          </div>
+          {% if req.closed_on %}
+          <div class="detail-field">
+            <div class="detail-field__label">Closed On</div>
+            <div class="detail-field__value">{{ req.closed_on.strftime('%d %b %Y %H:%M') }}</div>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if req.attachment_list %}
+        <div class="detail-section">
+          <div class="detail-section__title">Attachments ({{ req.attachment_list|length }})</div>
+          {% for fname in req.attachment_list %}
+          <div style="margin-bottom:var(--sp-1);">
+            <a href="{{ url_for('static', filename='uploads/facility/' + fname) }}" target="_blank"
+               style="font-size:var(--text-sm);color:var(--brand-600);">{{ fname }}</a>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comments -->
+<div class="card" style="margin-top:var(--sp-6);">
+  <div class="card__header" style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Comments</h3>
+    <span class="badge">{{ comments|length }}</span>
+  </div>
+  <div class="card__body">
+    {% if req.status == 'open' %}
+    <form method="post" action="{{ url_for('facility.add_comment', req_id=req.id) }}" style="margin-bottom:var(--sp-5);">
+      <div class="form-group">
+        <textarea name="description" class="form-input" rows="3" placeholder="Add a comment…" required data-testid="comment-input"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm" data-testid="btn-comment">Add Comment</button>
+    </form>
+    {% else %}
+    <p style="color:var(--slate-500);font-size:var(--text-sm);margin-bottom:var(--sp-4);">
+      Request is closed. Re-open to add comments.
+    </p>
+    {% endif %}
+
+    <ul class="comment-list" data-testid="comment-list">
+      {% for c in comments %}
+      <li class="comment-item {{ 'comment-item--system' if c.request_status in ('closed', 're-opened') }}">
+        <div class="comment-meta">
+          <strong>{{ c.FirstName }} {{ c.LastName }}</strong>
+          <span>{{ c.created_on.strftime('%d %b %Y %H:%M') if c.created_on else '' }}</span>
+          {% if c.request_status != 'open' %}
+          <span class="badge badge--{{ 'green' if c.request_status == 'closed' else 'brand' }}">{{ c.request_status }}</span>
+          {% endif %}
+        </div>
+        <div class="comment-body">{{ c.description|safe }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if not comments %}
+    <p style="text-align:center;color:var(--slate-400);font-size:var(--text-sm);padding:var(--sp-4);">No comments yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Close/Reopen modal -->
+<div class="reason-modal" id="reasonModal">
+  <div class="reason-modal__box">
+    <h3 id="reasonTitle" style="margin-bottom:var(--sp-4);"></h3>
+    <form id="reasonForm" method="post">
+      <div class="form-group">
+        <label class="form-label">Reason *</label>
+        <textarea name="reason" class="form-input" rows="3" required placeholder="Enter reason…"></textarea>
+      </div>
+      <div style="display:flex;gap:var(--sp-2);justify-content:flex-end;margin-top:var(--sp-4);">
+        <button type="button" class="btn btn-ghost" onclick="closeReasonModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="reasonSubmitBtn">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openReasonModal(action) {
+  var form = document.getElementById('reasonForm');
+  var title = document.getElementById('reasonTitle');
+  if (action === 'close') {
+    title.textContent = 'Close Request';
+    form.action = '{{ url_for("facility.close", req_id=req.id) }}';
+  } else {
+    title.textContent = 'Re-open Request';
+    form.action = '{{ url_for("facility.reopen", req_id=req.id) }}';
+  }
+  document.getElementById('reasonModal').classList.add('open');
+}
+function closeReasonModal() {
+  document.getElementById('reasonModal').classList.remove('open');
+}
+document.getElementById('reasonModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReasonModal();
+});
+</script>
+{% endblock %}

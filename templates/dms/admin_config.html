@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}DMS Admin Configuration{% endblock %}
+
+{% block head %}
+<style>
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-6);
+}
+@media (max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+.admin-card {
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.admin-card__header {
+  padding: var(--sp-4) var(--sp-5);
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.admin-card__body { padding: var(--sp-4) var(--sp-5); }
+.admin-list { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow-y: auto; }
+.admin-list li {
+  padding: var(--sp-2) 0;
+  font-size: var(--text-sm);
+  color: var(--slate-700);
+  border-bottom: 1px solid var(--slate-100);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.admin-list li:last-child { border-bottom: none; }
+.admin-list__id { color: var(--slate-400); font-size: var(--text-xs); min-width: 24px; }
+.add-form {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--slate-200);
+}
+.add-form input { flex: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>DMS Admin Configuration</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('dms.departments') }}">Documents</a>
+      <span>/</span>
+      <span>Admin Configuration</span>
+    </div>
+  </div>
+  <a href="{{ url_for('dms.departments') }}" class="btn btn-ghost">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+    Back
+  </a>
+</div>
+
+<div class="admin-grid">
+  <!-- Departments -->
+  <div class="admin-card">
+    <div class="admin-card__header">
+      Departments
+      <span class="badge">{{ departments|length }}</span>
+    </div>
+    <div class="admin-card__body">
+      <ul class="admin-list" data-testid="dept-list">
+        {% for d in departments %}
+        <li><span class="admin-list__id">{{ d.id }}</span> {{ d.Name }}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('dms.admin_add') }}" class="add-form">
+        <input type="hidden" name="entity" value="department">
+        <input type="text" name="name" class="form-input form-input--sm" placeholder="New department name" required>
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Document Types -->
+  <div class="admin-card">
+    <div class="admin-card__header">
+      Document Types
+      <span class="badge">{{ doc_types|length }}</span>
+    </div>
+    <div class="admin-card__body">
+      <ul class="admin-list" data-testid="doctype-list">
+        {% for dt in doc_types %}
+        <li><span class="admin-list__id">{{ dt.id }}</span> {{ dt.Name }}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('dms.admin_add') }}" class="add-form">
+        <input type="hidden" name="entity" value="document_type">
+        <input type="text" name="name" class="form-input form-input--sm" placeholder="New document type" required>
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Companies -->
+  <div class="admin-card">
+    <div class="admin-card__header">
+      Companies
+      <span class="badge">{{ companies|length }}</span>
+    </div>
+    <div class="admin-card__body">
+      <ul class="admin-list" data-testid="company-list">
+        {% for c in companies %}
+        <li><span class="admin-list__id">{{ c.id }}</span> {{ c.Name }}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('dms.admin_add') }}" class="add-form">
+        <input type="hidden" name="entity" value="company">
+        <input type="text" name="name" class="form-input form-input--sm" placeholder="New company name" required>
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Parties -->
+  <div class="admin-card">
+    <div class="admin-card__header">
+      Parties
+      <span class="badge">{{ parties|length }}</span>
+    </div>
+    <div class="admin-card__body">
+      <ul class="admin-list" data-testid="party-list">
+        {% for p in parties %}
+        <li><span class="admin-list__id">{{ p.id }}</span> {{ p.Name }}</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{{ url_for('dms.admin_add') }}" class="add-form">
+        <input type="hidden" name="entity" value="party">
+        <input type="text" name="name" class="form-input form-input--sm" placeholder="New party name" required>
+        <button type="submit" class="btn btn-primary btn-sm">Add</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

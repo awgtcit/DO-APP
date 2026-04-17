@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}New Facility Request{% endblock %}
+
+{% block head %}
+<style>
+.form-section {
+  margin-bottom: var(--sp-8); padding-bottom: var(--sp-6);
+  border-bottom: 1px solid var(--slate-100);
+}
+.form-section:last-child { border-bottom: none; }
+.form-section__title {
+  font-size: var(--text-lg); font-weight: var(--font-bold); color: var(--slate-900);
+  margin-bottom: var(--sp-5); display: flex; align-items: center; gap: var(--sp-2);
+}
+.form-section__title svg { width: 22px; height: 22px; color: var(--brand-500); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>New Facility Request</h1>
+    <div class="page-header__breadcrumb">
+      <a href="{{ url_for('dashboard.home') }}">Dashboard</a>
+      <span>/</span>
+      <a href="{{ url_for('facility.index') }}">Facility</a>
+      <span>/</span>
+      <span>New Request</span>
+    </div>
+  </div>
+  <a href="{{ url_for('facility.index') }}" class="btn btn-secondary">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/></svg>
+    Back
+  </a>
+</div>
+
+<form method="post" action="{{ url_for('facility.create_post') }}" enctype="multipart/form-data" data-testid="facility-form">
+  <div class="card">
+    <div class="card__body">
+
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.384 3.065A1.008 1.008 0 014.5 17.3V6.7a1.008 1.008 0 011.536-.936l5.384 3.065a1.008 1.008 0 010 1.87z"/>
+          </svg>
+          Request Details
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Subject * <small>(min 4 characters)</small></label>
+            <input type="text" name="subject" class="form-input" required minlength="4"
+                   value="{{ form.get('subject', '') }}" placeholder="Brief description of the issue"
+                   data-testid="input-subject">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Site *</label>
+            <select name="site" class="form-select" required data-testid="select-site">
+              <option value="">Select Site</option>
+              {% for val, label in sites %}
+              <option value="{{ val }}" {{ 'selected' if form.get('site') == val }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+          </svg>
+          Description
+        </div>
+        <div class="form-group">
+          <textarea name="summary" class="form-input" rows="6" placeholder="Describe the facility issue in detail…"
+                    data-testid="input-summary">{{ form.get('summary', '') }}</textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section__title">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13"/>
+          </svg>
+          Attachments
+        </div>
+        <div class="form-group">
+          <input type="file" name="files" class="form-input" multiple data-testid="input-files">
+          <small style="color:var(--slate-500);margin-top:var(--sp-1);display:block;">
+            Max 25 MB per file. Multiple files allowed.
+          </small>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <a href="{{ url_for('facility.index') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary" data-testid="btn-submit">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+          Submit Request
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
