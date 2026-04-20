@@ -71,10 +71,13 @@ def create_app():
     app.register_blueprint(isp_admin_bp)
     app.register_blueprint(admin_settings_bp)
 
-    # ── Global before-request: session check ───────────────────────
-    from auth.middleware import check_session
+    # ── SSO Middleware (must run BEFORE legacy session check) ─────
+    from sdk.session_middleware import init_sso_middleware
 
-    app.before_request(check_session)
+    init_sso_middleware(app, public_paths=[
+        '/health', '/api/health', '/favicon.ico',
+        '/static', '/auth/login', '/auth/isp', '/auth/logout',
+    ], login_url='/auth/login')
 
     # ── Jinja2 globals ─────────────────────────────────────────────
     from datetime import datetime as _dt

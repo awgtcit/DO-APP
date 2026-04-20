@@ -1,11 +1,16 @@
 """
 Auth controller — login, logout, ISP acceptance.
+Supports SSO via Auth-App launch tokens AND direct LDAP/DB login.
 """
+
+import logging
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
 from services.auth_service import login, check_isp, accept_isp
 from repos.user_repo import get_user_roles
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -23,6 +28,43 @@ def login_post():
     password = request.form.get("password", "")
     client_ip = request.remote_addr or ""
 
+    # Try Auth-App centralized login first (if configured)
+    from config import Config
+    if Config.AUTH_API_KEY and Config.AUTH_APP_CODE:
+        try:
+            from sdk.auth_client import app_login, validate_token
+            app_result = app_login(username, password, Config.AUTH_APP_CODE)
+            launch_token = app_result.get('launch_token')
+            if launch_token:
+                # Validate the token to get user info, roles, permissions
+                token_data = validate_token(launch_token)
+                if token_data:
+                    from sdk.session_middleware import _bridge_sso_to_legacy, _populate_g
+                    sso_roles = [r['code'] for r in token_data.get('roles', [])]
+                    session['sso_user'] = token_data['user']
+                    session['sso_roles'] = sso_roles
+                    session['sso_permissions'] = token_data.get('permissions', [])
+                    session['sso_token'] = launch_token
+                    session['sso_authenticated'] = True
+                    session.permanent = True
+
+                    # Bridge to DO-APP legacy session
+                    _bridge_sso_to_legacy(token_data, sso_roles)
+                    _populate_g(token_data['user'], sso_roles,
+                                token_data.get('permissions', []))
+
+                    logger.info("Auth-App login: %s", username)
+
+                    # ISP gate
+                    if not check_isp(session.get("email", username)):
+                        return redirect(url_for("auth.isp_accept"))
+
+                    flash(f"Welcome back, {session.get('user_name', '')}!", "success")
+                    return redirect(url_for("delivery_orders.dashboard"))
+        except Exception as exc:
+            logger.warning("Auth-App login failed, falling back to LDAP/DB: %s", exc)
+
+    # Fallback: local LDAP/DB authentication
     result = login(username, password, client_ip)
 
     if not result.success:
