@@ -8,8 +8,8 @@ from flask import Blueprint, request, jsonify
 integration_bp = Blueprint('integration_api', __name__, url_prefix='/api/integration')
 logger = logging.getLogger(__name__)
 
-_AUTH_URL_KEYS = ('AUTH_BASE_URL',)
-_API_KEY_KEYS = ('AUTH_API_KEY',)
+_AUTH_URL_KEYS = ('AUTH_BASE_URL', 'AUTH_APP_URL')
+_API_KEY_KEYS = ('AUTH_API_KEY', 'AUTH_APP_API_KEY')
 
 
 def _env_file_path():
@@ -66,8 +66,18 @@ def receive_config():
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
 
     data = request.get_json(silent=True) or {}
-    auth_url = (data.get('auth_url') or '').strip()
-    api_key = (data.get('api_key') or '').strip()
+    auth_url = (
+        data.get('auth_base_url')
+        or data.get('authBaseUrl')
+        or data.get('auth_url')
+        or ''
+    ).strip()
+    api_key = (
+        data.get('api_key')
+        or data.get('apiKey')
+        or data.get('key')
+        or ''
+    ).strip()
 
     if not auth_url and not api_key:
         return jsonify({'success': False, 'message': 'No config values provided'}), 400
