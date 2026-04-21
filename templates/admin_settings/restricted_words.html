@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Restricted Words — Admin Settings{% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@
 <div style="max-width:900px;margin:0 auto;padding:var(--sp-6);">
   <!-- Breadcrumb -->
   <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
-    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;">Admin</a>
     <span style="color:var(--slate-300);">/</span>
     <span style="color:var(--slate-600);">Restricted Words</span>
   </div>
@@ -58,7 +58,7 @@
           <td>{{ w.added_by_name or 'System' }}</td>
           <td>{{ w.created_at.strftime('%d %b %Y, %H:%M') if w.created_at else '—' }}</td>
           <td style="text-align:right;">
-            <form method="POST" action="{{ url_for('admin_settings.restricted_word_delete', word_id=w.id) }}" style="display:inline;" onsubmit="return confirm('Remove this word? It can be used again.');">
+            <form method="POST" action="{{ url_for('admin.restricted_word_delete', word_id=w.id) }}" style="display:inline;" onsubmit="return confirm('Remove this word? It can be used again.');">
               <button type="submit" class="btn btn-danger btn-sm">Remove</button>
             </form>
           </td>

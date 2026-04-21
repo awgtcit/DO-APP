@@ -2,6 +2,8 @@
 Delivery Order service — business logic for the Sales/Delivery Order module.
 """
 
+import builtins
+
 from flask import session
 from repos.delivery_order_repo import (
     get_dashboard_stats,
@@ -13,6 +15,7 @@ from repos.delivery_order_repo import (
     get_order_attachments,
     get_sales_managers,
     get_bill_to_list,
+    get_customer_by_sap_code,
     get_point_of_exit_list,
     get_products,
     get_last_po_number,
@@ -38,6 +41,7 @@ from services.do_permission_service import (
     DO_ROLE_FINANCE,
     DO_ROLE_LOGISTICS,
     DO_ROLE_CREATOR,
+    DO_ROLE_CUSTOMER_MANAGER,
 )
 from services.do_email_service import send_do_status_email
 
@@ -74,21 +78,22 @@ TRANSPORT_MODES = [
 CURRENCIES = ["USD", "EURO", "AED"]
 
 STATUS_OPTIONS = [
-    "ALL", "DRAFT", "SUBMITTED", "PRICE AGREED",
+    "ALL", "DRAFT", "PENDING CUSTOMER APPROVAL", "SUBMITTED", "PRICE AGREED",
     "CONFIRMED", "CUSTOMS DOCUMENT UPDATED", "DELIVERED",
     "NEED ATTACHMENT", "REJECTED", "CANCELLED",
 ]
 
 _HARDCODED_STATUS_FLOW = {
-    "DRAFT":           ["SUBMITTED", "CANCELLED"],
-    "SUBMITTED":       ["PRICE AGREED", "NEED ATTACHMENT", "REJECTED"],
-    "PRICE AGREED":    ["CONFIRMED", "CANCELLED"],
-    "CONFIRMED":       ["NEED ATTACHMENT", "CUSTOMS DOCUMENT UPDATED"],
-    "CUSTOMS DOCUMENT UPDATED": ["DELIVERED"],
-    "DELIVERED":       [],
-    "NEED ATTACHMENT": ["CONFIRMED"],
-    "REJECTED":        ["DRAFT"],
-    "CANCELLED":       [],
+    "DRAFT":                       ["SUBMITTED", "PENDING CUSTOMER APPROVAL", "CANCELLED"],
+    "PENDING CUSTOMER APPROVAL":   ["SUBMITTED", "REJECTED", "DRAFT"],
+    "SUBMITTED":                   ["PRICE AGREED", "NEED ATTACHMENT", "REJECTED"],
+    "PRICE AGREED":                ["CONFIRMED", "CANCELLED"],
+    "CONFIRMED":                   ["NEED ATTACHMENT", "CUSTOMS DOCUMENT UPDATED"],
+    "CUSTOMS DOCUMENT UPDATED":    ["DELIVERED"],
+    "DELIVERED":                   [],
+    "NEED ATTACHMENT":             ["CONFIRMED"],
+    "REJECTED":                    ["DRAFT"],
+    "CANCELLED":                   [],
 }
 
 def _get_status_flow() -> dict:
@@ -105,10 +110,10 @@ STATUS_FLOW = _HARDCODED_STATUS_FLOW
 def do_dashboard_stats() -> dict:
     """
     Get KPI counts for the Delivery Order dashboard.
-    Approvers/finance see ALL orders; creators see only their own.
+    Approvers/finance/logistics/customer_manager see ALL orders; creators see only their own.
     """
     do_role = get_do_role()
-    if do_role in (DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS):
+    if do_role in (DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS, DO_ROLE_CUSTOMER_MANAGER):
         return get_dashboard_stats()
     emp_id = session.get("emp_id")
     if emp_id:
@@ -126,10 +131,10 @@ def list_orders(
 ) -> tuple[list[dict], int]:
     """
     List delivery orders with filtering + pagination.
-    Approvers/finance/logistics see all; creators see only their own.
+    Approvers/finance/logistics/customer_manager see all; creators see only their own.
     """
     do_role = get_do_role()
-    if do_role in (DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS):
+    if do_role in (DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS, DO_ROLE_CUSTOMER_MANAGER):
         return get_all_orders(status=status, page=page, per_page=per_page, search=search)
     emp_id = session.get("emp_id")
     if emp_id:
@@ -157,9 +162,13 @@ def get_order_detail(order_id: int) -> dict | None:
 
 def get_form_lookups() -> dict:
     """Fetch all dropdown data needed for create/edit forms."""
+    bill_to_list = get_bill_to_list()
+    for customer in bill_to_list:
+        customer["DerivedMarksNumbers"] = _format_marks_numbers_for_customer(customer)
+
     return {
         "sales_managers": get_sales_managers(),
-        "bill_to_list": get_bill_to_list(),
+        "bill_to_list": bill_to_list,
         "point_of_exit": get_point_of_exit_list(),
         "products": get_products(),
         "delivery_terms": DELIVERY_TERMS,
@@ -169,10 +178,103 @@ def get_form_lookups() -> dict:
     }
 
 
+def _format_marks_numbers_for_customer(customer: dict) -> str:
+    """Format Marks & Numbers for a customer using ownership rules."""
+    def _to_text(value, default: str = "") -> str:
+        if value is None:
+            return default
+        return builtins.str(value).strip()
+
+    ownership = _to_text(customer.get("Ownership_Sole_Proprietorship"), "No") or "No"
+    if ownership != "No":
+        return "N/A"
+
+    sap_code = _to_text(customer.get("SapCodeFromSAP") or customer.get("SapCode"))
+    customer_name = _to_text(customer.get("Name"))
+    if sap_code and customer_name:
+        return f"{sap_code} | {customer_name}"
+    return customer_name or sap_code
+
+
+def derive_marks_numbers_for_bill_to(bill_to_sap_code: str | None) -> str:
+    """Derive Marks & Numbers using ownership rules from Bill To customer.
+
+    Rules:
+    - Ownership == "No"  -> SAP Code From SAP (or Ahlaan code) + customer name
+    - Ownership == "Yes" -> "N/A"
+    - Ownership == "N/A" -> "N/A"
+    """
+    if not bill_to_sap_code:
+        return ""
+
+    customer = get_customer_by_sap_code(str(bill_to_sap_code))
+    if not customer:
+        return ""
+
+    return _format_marks_numbers_for_customer(customer)
+
+
+# ── Ownership routing ────────────────────────────────────────────
+
+def get_ownership_routing(bill_to_sap: str | None, ship_to_sap: str | None) -> dict:
+    """
+    Determine workflow routing based on Bill To and Ship To ownership.
+
+    Returns a dict with:
+      'needs_customer_approval': bool
+      'scenario': 'direct' | 'sole_prop' | 'na_parties' | 'mixed'
+      'notification_type': None | 'not_allowed' | 'parties_not_defined'
+      'bill_to_ownership': str   (raw value from DB)
+      'ship_to_ownership': str   (raw value from DB)
+    """
+    def _ownership(sap_code: str | None) -> str:
+        if not sap_code:
+            return "N/A"
+        c = get_customer_by_sap_code(str(sap_code))
+        if not c:
+            return "N/A"
+        val = str(c.get("Ownership_Sole_Proprietorship") or "No").strip()
+        return val if val else "No"
+
+    bill_o = _ownership(bill_to_sap)
+    ship_o = _ownership(ship_to_sap)
+
+    # BillTo=No AND ShipTo=No → direct flow, no notification
+    if bill_o == "No" and ship_o == "No":
+        return {
+            "needs_customer_approval": False,
+            "scenario": "direct",
+            "notification_type": None,
+            "bill_to_ownership": bill_o,
+            "ship_to_ownership": ship_o,
+        }
+
+    # BillTo=N/A AND ShipTo=N/A → parties not defined
+    if bill_o == "N/A" and ship_o == "N/A":
+        return {
+            "needs_customer_approval": True,
+            "scenario": "na_parties",
+            "notification_type": "parties_not_defined",
+            "bill_to_ownership": bill_o,
+            "ship_to_ownership": ship_o,
+        }
+
+    # Any Yes or mixed N/A → sole proprietorship / not allowed
+    return {
+        "needs_customer_approval": True,
+        "scenario": "sole_prop",
+        "notification_type": "not_allowed",
+        "bill_to_ownership": bill_o,
+        "ship_to_ownership": ship_o,
+    }
+
+
 # ── Create ──────────────────────────────────────────────────────
 
 def create_new_order(data: dict) -> int:
-    """Create a new delivery order. Returns the new ID."""
+    """Create a new delivery order. Always starts as DRAFT."""
+    data = dict(data)
+    data["initial_status"] = "DRAFT"
     return create_order(data)
 
 
@@ -229,31 +331,42 @@ def change_order_status(
     emp_id: int,
     reject_reason: str | None = None,
     reject_remarks: str | None = None,
-) -> tuple[bool, list[str]]:
+) -> tuple[bool, list[str], str]:
     """
     Change order status following the allowed flow AND permission checks.
-    Returns (success, error_messages).
+    Returns (success, error_messages, actual_status_applied).
+    actual_status_applied is the status actually saved (may differ from new_status
+    when ownership routing intercepts SUBMITTED → PENDING CUSTOMER APPROVAL).
     """
     order = get_order_by_id(order_id)
     if not order:
-        return False, ["Order not found."]
+        return False, ["Order not found."], ""
 
     current = order.get("Status", "")
     flow = _get_status_flow()
     allowed = flow.get(current, [])
 
     if new_status not in allowed:
-        return False, ["Status transition not allowed."]
+        return False, ["Status transition not allowed."], ""
+
+    # Ownership routing: creator submitting DRAFT → check if Customer Manager approval needed.
+    # Use the already-JOINed ownership fields from the order dict to avoid an extra DB call
+    # and to guarantee consistency with what the detail view shows.
+    if current == "DRAFT" and new_status == "SUBMITTED":
+        bill_o = (order.get("bill_to_ownership_sole_prop") or "").strip()
+        ship_o = (order.get("ship_to_ownership_sole_prop") or "").strip()
+        if bill_o in ("Yes", "N/A") or ship_o in ("Yes", "N/A"):
+            new_status = "PENDING CUSTOMER APPROVAL"
 
     # Permission check
     if not can_transition(order, new_status):
-        return False, ["You lack permission for this transition."]
+        return False, ["You lack permission for this transition."], ""
 
     # Mandatory-field gate for SUBMITTED
     if new_status == "SUBMITTED":
         errors = validate_order_for_submit(order)
         if errors:
-            return False, errors
+            return False, errors, ""
 
     # Use reject reason variant when rejecting
     if needs_reject_reason(new_status) and (reject_reason or reject_remarks):
@@ -288,7 +401,7 @@ def change_order_status(
             extra_cc=cc_emails,
         )
 
-    return ok, []
+    return ok, [], new_status if ok else ""
 
 
 # ── Items ───────────────────────────────────────────────────────

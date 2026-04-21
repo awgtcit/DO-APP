@@ -1,0 +1,76 @@
+{# Users tab — list application users with role badges #}
+{% if users %}
+<div style="margin-bottom:var(--sp-4);">
+  <input type="text" class="form-input" id="acUserSearch" placeholder="Search users by name or email..." style="max-width:400px;">
+</div>
+<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);overflow:hidden;">
+  <div class="table-wrap">
+    <table class="data-table" id="acUsersTable">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th>Employee ID</th>
+          <th>Status</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>
+            <div style="font-weight:var(--font-medium);color:var(--slate-800);">{{ u.get('first_name', '') }} {{ u.get('last_name', '') }}</div>
+            <small style="color:var(--slate-400);">{{ u.get('login_id', u.get('employee_id', '—')) }}</small>
+          </td>
+          <td style="color:var(--slate-500);">{{ u.get('email', '—') }}</td>
+          <td>{{ u.get('employee_id', '—') }}</td>
+          <td>
+            {% if u.get('is_blocked') %}
+            <span class="badge badge--danger">Blocked</span>
+            {% else %}
+            <span class="badge badge--success">Active</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            <a href="{{ url_for('admin.ac_user_roles', user_id=u.get('user_id', u.get('id'))) }}"
+               class="btn btn--secondary btn--sm">
+              Manage Roles
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if meta and meta.get('total_pages', 1) > 1 %}
+<div style="display:flex;justify-content:center;gap:var(--sp-2);margin-top:var(--sp-4);">
+  {% for p in range(1, meta.get('total_pages', 1) + 1) %}
+  <a href="{{ url_for('admin.access_control', tab='users', page=p) }}"
+     style="padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-md);font-size:var(--text-sm);text-decoration:none;
+     {% if p == page %}background:var(--brand-600);color:var(--white);{% else %}background:var(--white);color:var(--slate-600);border:1px solid var(--slate-200);{% endif %}">
+    {{ p }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+(function(){
+  var input = document.getElementById('acUserSearch');
+  if (!input) return;
+  input.addEventListener('input', function(){
+    var q = this.value.toLowerCase();
+    document.querySelectorAll('#acUsersTable tbody tr').forEach(function(row){
+      row.style.display = row.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% else %}
+<div style="text-align:center;padding:var(--sp-12);color:var(--slate-400);">
+  <div style="font-size:var(--text-3xl);margin-bottom:var(--sp-2);">&#128101;</div>
+  <p>No users found for this application.</p>
+</div>
+{% endif %}

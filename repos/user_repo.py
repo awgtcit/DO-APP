@@ -3,6 +3,8 @@ User repository — all DB access related to users & credentials.
 Every query is parameterized.
 """
 
+import pyodbc
+
 from db.transaction import transactional, read_only
 
 
@@ -56,15 +58,42 @@ def get_isp_status(email: str) -> dict | None:
     """Check ISP acceptance status for a user."""
     sql = "SELECT * FROM Isp_Status WHERE email = ?"
     with read_only() as cursor:
-        cursor.execute(sql, (email,))
-        row = cursor.fetchone()
-        return _row_to_dict(cursor, row) if row else None
+        try:
+            cursor.execute(sql, (email,))
+            row = cursor.fetchone()
+            return _row_to_dict(cursor, row) if row else None
+        except pyodbc.ProgrammingError as exc:
+            # In newly switched databases, ISP table may not be migrated yet.
+            # Avoid hard auth failure; caller can decide fallback behavior.
+            if "Invalid object name 'Isp_Status'" in str(exc):
+                return None
+            raise
+
+
+def _ensure_isp_status_table(cursor) -> None:
+    """Create ISP table if missing (idempotent)."""
+    cursor.execute(
+        """
+        IF OBJECT_ID('dbo.Isp_Status', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.Isp_Status (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                email NVARCHAR(255) NOT NULL UNIQUE,
+                status INT NOT NULL DEFAULT 0,
+                created DATETIME NOT NULL DEFAULT GETDATE(),
+                modified DATETIME NULL
+            )
+        END
+        """
+    )
 
 
 def upsert_isp_status(email: str, status: int) -> None:
     """Create or update ISP acceptance record."""
-    existing = get_isp_status(email)
     with transactional() as (conn, cursor):
+        _ensure_isp_status_table(cursor)
+        cursor.execute("SELECT TOP 1 id FROM Isp_Status WHERE email = ?", (email,))
+        existing = cursor.fetchone()
         if existing:
             cursor.execute(
                 "UPDATE Isp_Status SET status = ?, modified = GETDATE() WHERE email = ?",
@@ -77,12 +106,10 @@ def upsert_isp_status(email: str, status: int) -> None:
             )
 
 
-def authenticate_db(username: str, password_hash: str) -> dict | None:
+def find_user_credentials(username: str) -> dict | None:
     """
-    Look up credentials for a user in Intra_UserCredentials.
-    Returns the user record for the caller to verify the password.
-    NOTE: Legacy passwords are stored as MD5 hashes. The auth service
-    handles comparison and will re-hash to bcrypt on successful login.
+    Look up credential record for a user in Intra_UserCredentials.
+    Password verification is handled in auth service.
     """
     sql = """
         SELECT uc.*, u.FirstName, u.LastName, u.EmpID, u.EmailAddress,

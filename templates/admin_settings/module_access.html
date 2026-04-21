@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Module Access — {{ module.display_name }}{% endblock %}
 
 {% block content %}
@@ -11,9 +11,9 @@
 <div style="max-width:900px;margin:0 auto;padding:var(--sp-6);">
   <!-- Breadcrumb -->
   <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
-    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;">Admin</a>
     <span style="color:var(--slate-300);">/</span>
-    <a href="{{ url_for('admin_settings.modules') }}" style="color:var(--slate-400);text-decoration:none;">Modules</a>
+    <a href="{{ url_for('admin.modules') }}" style="color:var(--slate-400);text-decoration:none;">Modules</a>
     <span style="color:var(--slate-300);">/</span>
     <span style="color:var(--slate-600);">{{ module.display_name }}</span>
   </div>
@@ -141,10 +141,10 @@
         <div style="flex:1;min-width:240px;">
           <label class="form-label">Add User to {{ label }}</label>
           <select name="emp_id" class="form-select" required>
-            <option value="">Select user\u2026</option>
+            <option value="">-- Select User --</option>
             {% for u in all_users %}
-              {% if u.EmpID not in role_assigned_ids[rk] %}
-              <option value="{{ u.EmpID }}">{{ u.FirstName }} {{ u.LastName }} ({{ u.EmpID }})</option>
+              {% if u.emp_id and u.emp_id not in role_assigned_ids[rk] %}
+              <option value="{{ u.emp_id }}">{{ u.first_name }} {{ u.last_name }} ({{ u.auth_emp_id or u.emp_id }})</option>
               {% endif %}
             {% endfor %}
           </select>
@@ -181,7 +181,7 @@
   <!-- Per-User Access -->
   <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
     <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Per-User Overrides</h2>
-    
+
     <!-- Existing overrides -->
     {% if user_access %}
     <div class="table-wrap" style="margin-bottom:var(--sp-4);">
@@ -227,9 +227,11 @@
       <div style="flex:1;">
         <label class="form-label">Add User Override</label>
         <select name="emp_id" class="form-select" required>
-          <option value="">Select user…</option>
+          <option value="">-- Select User --</option>
           {% for u in all_users %}
-          <option value="{{ u.EmpID }}">{{ u.FirstName }} {{ u.LastName }} ({{ u.EmpID }})</option>
+            {% if u.emp_id %}
+          <option value="{{ u.emp_id }}">{{ u.first_name }} {{ u.last_name }} ({{ u.auth_emp_id or u.emp_id }})</option>
+            {% endif %}
           {% endfor %}
         </select>
       </div>
@@ -245,7 +247,7 @@
   </div>
 
   <div style="margin-top:var(--sp-4);">
-    <a href="{{ url_for('admin_settings.modules') }}" class="btn btn-secondary">&larr; Back to Modules</a>
+    <a href="{{ url_for('admin.modules') }}" class="btn btn-secondary">&larr; Back to Modules</a>
   </div>
 </div>
 

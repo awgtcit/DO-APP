@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}{{ 'Edit Ticket' if editing else 'New Ticket' }} — IT Support{% endblock %}
 
 {% block content %}

@@ -9,14 +9,18 @@ Role resolution priority:
 Reject reasons are the 11 predefined options from the legacy system.
 """
 
+import logging
 from flask import g, session
+
+logger = logging.getLogger(__name__)
 
 # ── DO Role constants ───────────────────────────────────────────
 
-DO_ROLE_APPROVER = "do_approver"
-DO_ROLE_FINANCE = "do_finance"
-DO_ROLE_LOGISTICS = "do_logistics"
-DO_ROLE_CREATOR = "do_creator"
+DO_ROLE_APPROVER          = "do_approver"
+DO_ROLE_FINANCE           = "do_finance"
+DO_ROLE_LOGISTICS         = "do_logistics"
+DO_ROLE_CREATOR           = "do_creator"
+DO_ROLE_CUSTOMER_MANAGER  = "do_customer_manager"   # approves ownership-flagged orders
 
 # Management section role constants
 DO_MGMT_PRODUCTS = "do_mgmt_products"
@@ -27,8 +31,14 @@ DO_MGMT_REPORTS = "do_mgmt_reports"
 # All management role keys
 DO_MGMT_ROLES = {DO_MGMT_PRODUCTS, DO_MGMT_CUSTOMERS, DO_MGMT_GRMS, DO_MGMT_REPORTS}
 
-# All order-flow role keys (creator, finance, logistics, approver)
-DO_ORDER_ROLES = {DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS, DO_ROLE_CREATOR}
+# All order-flow role keys
+DO_ORDER_ROLES = {
+    DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS,
+    DO_ROLE_CREATOR, DO_ROLE_CUSTOMER_MANAGER,
+}
+
+# Status that requires Customer Manager approval before Finance sees the order
+STATUS_PENDING_CUSTOMER_APPROVAL = "PENDING CUSTOMER APPROVAL"
 
 # ── Predefined reject reasons (legacy parity) ──────────────────
 
@@ -80,20 +90,22 @@ def get_do_role() -> str:
             module_roles = get_all_module_roles_for_user(emp_id)
             do_roles = module_roles.get("delivery_orders", [])
             if do_roles:
-                # Priority: approver > finance > logistics > creator
+                # Priority: approver > finance > logistics > customer_manager > creator
                 if DO_ROLE_APPROVER in do_roles:
                     resolved = DO_ROLE_APPROVER
                 elif DO_ROLE_FINANCE in do_roles:
                     resolved = DO_ROLE_FINANCE
                 elif DO_ROLE_LOGISTICS in do_roles:
                     resolved = DO_ROLE_LOGISTICS
+                elif DO_ROLE_CUSTOMER_MANAGER in do_roles:
+                    resolved = DO_ROLE_CUSTOMER_MANAGER
                 elif DO_ROLE_CREATOR in do_roles:
                     resolved = DO_ROLE_CREATOR
 
                 g._do_role = resolved
                 return resolved
         except Exception:
-            pass  # Table may not exist yet; fall through
+            logger.exception("Error in get_do_role for emp_id=%s", emp_id)
 
     # 2. System admin → full DO approver
     if "admin" in roles_lower or "it_admin" in roles_lower:
@@ -116,6 +128,11 @@ def is_do_finance() -> bool:
 def is_do_logistics() -> bool:
     """Check if the user has the logistics role (reviewer → DO Logistics)."""
     return get_do_role() == DO_ROLE_LOGISTICS
+
+
+def is_do_customer_manager() -> bool:
+    """Check if the user has the Customer Manager role."""
+    return get_do_role() == DO_ROLE_CUSTOMER_MANAGER
 
 
 def is_do_creator() -> bool:
@@ -142,7 +159,7 @@ def _get_user_do_roles() -> set[str]:
             module_roles = get_all_module_roles_for_user(emp_id)
             roles_set = set(module_roles.get("delivery_orders", []))
         except Exception:
-            pass
+            logger.exception("Error fetching DO module roles for emp_id=%s", emp_id)
 
     # Admins get every role implicitly
     sys_roles = session.get("roles", []) or []
@@ -271,7 +288,15 @@ def can_transition(order: dict, new_status: str) -> bool:
     creator_transitions = {
         ("DRAFT", "SUBMITTED"),
         ("DRAFT", "CANCELLED"),
+        ("DRAFT", "PENDING CUSTOMER APPROVAL"),
         ("REJECTED", "DRAFT"),
+        ("PENDING CUSTOMER APPROVAL", "DRAFT"),
+    }
+
+    # Customer Manager transitions — approve/reject ownership-flagged orders
+    customer_manager_transitions = {
+        ("PENDING CUSTOMER APPROVAL", "SUBMITTED"),
+        ("PENDING CUSTOMER APPROVAL", "REJECTED"),
     }
 
     # Logistics / approver transitions (confirm after price agreed)
@@ -297,6 +322,9 @@ def can_transition(order: dict, new_status: str) -> bool:
 
     if transition in creator_transitions:
         return is_owner or do_role == DO_ROLE_APPROVER
+
+    if transition in customer_manager_transitions:
+        return do_role in (DO_ROLE_CUSTOMER_MANAGER, DO_ROLE_APPROVER)
 
     if transition in logistics_transitions:
         return do_role in (DO_ROLE_LOGISTICS, DO_ROLE_APPROVER)
@@ -370,11 +398,12 @@ def get_do_context() -> dict:
     Call this in every DO controller route.
     """
     do_role = get_do_role()
-    return {
+    ctx = {
         "do_role": do_role,
         "is_do_admin": do_role == DO_ROLE_APPROVER,
         "is_do_finance": do_role == DO_ROLE_FINANCE,
         "is_do_logistics": do_role == DO_ROLE_LOGISTICS,
+        "is_do_customer_manager": do_role == DO_ROLE_CUSTOMER_MANAGER,
         "is_do_creator": do_role == DO_ROLE_CREATOR,
         "can_create": can_create_order(),
         "can_see_prices": can_see_prices(),
@@ -387,3 +416,4 @@ def get_do_context() -> dict:
         "has_any_management_role": has_any_management_role(),
         "has_any_order_role": has_any_order_role(),
     }
+    return ctx

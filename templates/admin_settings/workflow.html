@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Workflow Editor — Admin Settings{% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@
 <div style="max-width:1100px;margin:0 auto;padding:var(--sp-6);">
   <!-- Breadcrumb -->
   <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
-    <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;">Settings</a>
+    <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;">Admin</a>
     <span style="color:var(--slate-300);">/</span>
     <span style="color:var(--slate-600);">Workflow</span>
   </div>
@@ -24,7 +24,7 @@
   <!-- Module selector -->
   <div style="margin-bottom:var(--sp-6);display:flex;gap:var(--sp-2);">
     {% for mk, mn in workflow_modules.items() %}
-    <a href="{{ url_for('admin_settings.workflow', module=mk) }}"
+    <a href="{{ url_for('admin.workflow', module=mk) }}"
        class="btn {{ 'btn-primary' if mk == module_key else 'btn-secondary' }}">
       {{ mn }}
     </a>
@@ -61,7 +61,7 @@
                 {% endif %}
               </td>
               <td style="text-align:right;">
-                <form method="POST" action="{{ url_for('admin_settings.workflow_status_delete', status_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this status and ALL transitions referencing it?');">
+                <form method="POST" action="{{ url_for('admin.workflow_status_delete', status_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this status and ALL transitions referencing it?');">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
@@ -78,7 +78,7 @@
       <!-- Add Status -->
       <div style="border-top:1px solid var(--slate-100);padding-top:var(--sp-4);">
         <h3 style="font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--slate-600);margin-bottom:var(--sp-3);">Add Status</h3>
-        <form method="POST" action="{{ url_for('admin_settings.workflow_status_add') }}">
+        <form method="POST" action="{{ url_for('admin.workflow_status_add') }}">
           <input type="hidden" name="module_key" value="{{ module_key }}">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);margin-bottom:var(--sp-2);">
             <input type="text" name="status_key" class="form-input" placeholder="Status key (e.g. APPROVED)" required>
@@ -116,7 +116,7 @@
               <td style="font-family:monospace;font-size:var(--text-xs);">{{ t.to_status }}</td>
               <td>{{ available_roles.get(t.required_role, t.required_role) if t.required_role else '—' }}</td>
               <td style="text-align:right;">
-                <form method="POST" action="{{ url_for('admin_settings.workflow_transition_delete', transition_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Remove this transition?');">
+                <form method="POST" action="{{ url_for('admin.workflow_transition_delete', transition_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Remove this transition?');">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
@@ -133,7 +133,7 @@
       <!-- Add Transition -->
       <div style="border-top:1px solid var(--slate-100);padding-top:var(--sp-4);">
         <h3 style="font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--slate-600);margin-bottom:var(--sp-3);">Add Transition</h3>
-        <form method="POST" action="{{ url_for('admin_settings.workflow_transition_add') }}">
+        <form method="POST" action="{{ url_for('admin.workflow_transition_add') }}">
           <input type="hidden" name="module_key" value="{{ module_key }}">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-2);margin-bottom:var(--sp-3);">
             <select name="from_status" class="form-select" required>

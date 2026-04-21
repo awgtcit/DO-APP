@@ -71,10 +71,38 @@ def _bridge_sso_to_legacy(user_info, roles):
     DO-APP controllers rely on session['email'], session['emp_id'],
     session['user_name'], session['roles'], etc.
     """
+    _logger = logging.getLogger(__name__)
     user = user_info.get('user', user_info)
 
+    emp_id = 0
+    try:
+        from services.admin_settings_service import (
+            resolve_or_create_local_emp_id_from_auth_user,
+        )
+
+        emp_id = (
+            resolve_or_create_local_emp_id_from_auth_user(
+                {
+                    'employee_code': user.get('employee_code'),
+                    'employee_id': user.get('employee_id'),
+                    'emp_id': user.get('emp_id'),
+                    'first_name': user.get('first_name', ''),
+                    'last_name': user.get('last_name', ''),
+                    'email': user.get('email', ''),
+                    'group_id': user.get('group_id'),
+                },
+                create_if_missing=True,
+            )
+            or 0
+        )
+    except Exception:
+        _logger.debug("SSO bridge: local emp_id resolution failed", exc_info=True)
+
+    _logger.debug("SSO bridge: email=%s, emp_id=%s (employee_code=%r)",
+                 user.get('email'), emp_id, user.get('employee_code'))
+
     session['email'] = user.get('email', '')
-    session['emp_id'] = user.get('employee_code') or user.get('emp_id') or 0
+    session['emp_id'] = emp_id
     session['user_name'] = (
         f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
         or user.get('display_name', '')
@@ -140,6 +168,7 @@ def init_sso_middleware(app, public_paths=None, login_url='/auth/login'):
                 session['sso_token'] = launch_token
                 session['sso_authenticated'] = True
                 session['sso_perm_ts'] = time.time()
+                session['embed_mode'] = request.args.get('embed') == '1'
                 session.permanent = True
 
                 # Auto-grant admin permissions for Auth-App admins

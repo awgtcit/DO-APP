@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}{{ order.PO_Number }} — Order Detail{% endblock %}
 
 {% block head %}
@@ -77,6 +77,11 @@
     color: #065f46;
   }
 
+  .status-large--pending-customer-approval {
+    background: #ede9fe;
+    color: #5b21b6;
+  }
+
   .status-dot {
     width: 8px;
     height: 8px;
@@ -96,14 +101,13 @@
   /* ── Title bar ──────────────────────────────────────── */
   .doc-title-bar {
     text-align: center;
-    padding: 12px 0;
-    font-size: var(--text-lg);
-    font-weight: var(--font-bold);
+    padding: 10px 0;
+    font-size: 16px;
+    font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--slate-900);
     border-bottom: 1px solid var(--slate-200);
-    background: var(--slate-50);
   }
 
   /* ── Info sections (table-based two-column) ─────────── */
@@ -117,7 +121,7 @@
     display: table-cell;
     width: 50%;
     vertical-align: top;
-    padding: 14px 20px;
+    padding: 10px 14px;
   }
 
   .info-col+.info-col {
@@ -125,13 +129,10 @@
   }
 
   .info-col__heading {
-    font-weight: var(--font-bold);
-    font-size: var(--text-sm);
-    color: var(--teal-dark, #005528);
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 2px solid #006633;
-    display: inline-block;
+    font-weight: 700;
+    font-size: 11px;
+    margin-bottom: 6px;
+    color: var(--slate-900);
   }
 
   .field-table {
@@ -140,30 +141,26 @@
   }
 
   .field-table td {
-    padding: 3px 0;
-    font-size: var(--text-sm);
+    padding: 2px 0;
+    font-size: 11px;
     vertical-align: top;
   }
 
   .field-table .lbl {
-    width: 170px;
-    font-weight: var(--font-semibold);
-    color: var(--slate-500);
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: .03em;
+    width: 180px;
+    font-weight: 600;
+    color: var(--slate-700);
     white-space: nowrap;
   }
 
   .field-table .sep {
     width: 12px;
     text-align: center;
-    color: var(--slate-400);
+    color: var(--slate-500);
   }
 
   .field-table .val {
-    color: var(--slate-800);
-    font-weight: var(--font-medium);
+    color: var(--slate-900);
   }
 
   @media (max-width: 768px) {
@@ -191,19 +188,19 @@
   .items-teal thead th {
     background: #006633;
     color: #fff;
-    font-weight: var(--font-semibold);
-    font-size: 11px;
+    font-weight: 600;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: .5px;
-    padding: 8px 10px;
+    padding: 7px 8px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, .3);
+    border: 1px solid #fff;
   }
 
   .items-teal tbody td {
-    padding: 6px 10px;
-    font-size: var(--text-sm);
-    border: 1px solid var(--slate-200);
+    padding: 5px 8px;
+    font-size: 10.5px;
+    border: 1px solid #eee;
     vertical-align: middle;
   }
 
@@ -224,9 +221,9 @@
 
   .items-teal .totals-row td {
     background: var(--slate-100);
-    font-weight: var(--font-bold);
-    font-size: var(--text-sm);
-    padding: 8px 10px;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 7px 8px;
     border: none;
   }
 
@@ -251,9 +248,9 @@
   .notify-row {
     display: table;
     width: 100%;
-    padding: 10px 20px;
+    padding: 8px 14px;
     border-top: 1px solid var(--slate-200);
-    font-size: var(--text-sm);
+    font-size: 11px;
   }
 
   .notify-row__left,
@@ -270,7 +267,7 @@
   .notify-row u {
     text-decoration-color: #006633;
     text-underline-offset: 2px;
-    font-weight: var(--font-semibold);
+    font-weight: 600;
     color: #005528;
   }
 
@@ -583,8 +580,13 @@
         style="display:inline">
         <input type="hidden" name="new_status" value="{{ t }}">
         {% if t == 'SUBMITTED' %}
-        <button type="submit" class="btn btn-primary btn-sm"
-          onclick="return confirm('Submit this order?')">Submit</button>
+        <input type="hidden" name="_submit_target" value="1">
+        {# Show "Approve" button for Customer Manager approving PENDING CUSTOMER APPROVAL orders #}
+        {% if order.Status == 'PENDING CUSTOMER APPROVAL' and is_do_customer_manager %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="doDetailSubmit(this.closest('form'))">Approve</button>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="doDetailSubmit(this.closest('form'))">Submit</button>
+        {% endif %}
         {% elif t == 'CONFIRMED' %}
         <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Confirm this order?')"
           style="background:#15803d;border-color:#15803d;">Confirm</button>
@@ -628,30 +630,38 @@
     <!-- Title bar -->
     <div class="doc-title-bar">Delivery Order</div>
 
-    <!-- Header Info: Created By / Dates -->
+    <!-- Header Info: Created By / Dates (matches print layout) -->
     <div class="info-section">
       <div class="info-col">
-        <div class="info-col__heading">Order Information</div>
         <table class="field-table">
           <tr>
-            <td class="lbl">PO Number</td>
+            <td class="lbl">Created By</td>
             <td class="sep">:</td>
-            <td class="val"><strong>{{ order.PO_Number }}</strong></td>
-          </tr>
-          <tr>
-            <td class="lbl">Order Date</td>
-            <td class="sep">:</td>
-            <td class="val">{{ order.po_date_fmt or '—' }}</td>
-          </tr>
-          <tr>
-            <td class="lbl">Loading Date</td>
-            <td class="sep">:</td>
-            <td class="val">{{ order.loading_date_fmt or '—' }}</td>
+            <td class="val">{{ order.creator_first }} {{ order.creator_last }}</td>
           </tr>
           <tr>
             <td class="lbl">On Behalf Of</td>
             <td class="sep">:</td>
             <td class="val">{{ order.on_behalf_of_name or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Date: (dd/mm/yyyy)</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.po_date_fmt or '—' }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">P. O. Number</td>
+            <td class="sep">:</td>
+            <td class="val"><strong>{{ order.PO_Number }}</strong></td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-col">
+        <table class="field-table">
+          <tr>
+            <td class="lbl">Loading Date: (dd/mm/yyyy)</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.loading_date_fmt or '—' }}</td>
           </tr>
           <tr>
             <td class="lbl">Delivery Terms</td>
@@ -664,29 +674,28 @@
             <td class="val">{{ order.Payment_Terms or '—' }}</td>
           </tr>
           <tr>
-            <td class="lbl">Transportation</td>
+            <td class="lbl">Transportation Mode</td>
             <td class="sep">:</td>
             <td class="val">{{ order.Transportation_Mode or '—' }}</td>
           </tr>
-          <tr>
-            <td class="lbl">Currency</td>
-            <td class="sep">:</td>
-            <td class="val">{{ order.DOCurrency or 'USD' }}</td>
-          </tr>
         </table>
       </div>
+    </div>
+
+    <!-- Bill To / Ship To (matches print layout) -->
+    <div class="info-section">
       <div class="info-col">
         <div class="info-col__heading">Bill To</div>
         <table class="field-table">
           <tr>
+            <td class="lbl">Sap Code</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.bill_to_sap or order.Bill_To_SapCode or '—' }}</td>
+          </tr>
+          <tr>
             <td class="lbl">Name</td>
             <td class="sep">:</td>
             <td class="val">{{ order.bill_to_name or '—' }}</td>
-          </tr>
-          <tr>
-            <td class="lbl">SAP Code</td>
-            <td class="sep">:</td>
-            <td class="val">{{ order.bill_to_sap or order.Bill_To_SapCode or '—' }}</td>
           </tr>
           <tr>
             <td class="lbl">Address</td>
@@ -694,9 +703,15 @@
             <td class="val">{{ order.bill_to_address or '—' }}</td>
           </tr>
         </table>
-
-        <div class="info-col__heading" style="margin-top:16px;">Ship To</div>
+      </div>
+      <div class="info-col">
+        <div class="info-col__heading">Ship To</div>
         <table class="field-table">
+          <tr>
+            <td class="lbl">Sap Code</td>
+            <td class="sep">:</td>
+            <td class="val">{{ order.ship_to_sap or order.Ship_To_SapCode or '—' }}</td>
+          </tr>
           <tr>
             <td class="lbl">Name</td>
             <td class="sep">:</td>
@@ -708,12 +723,12 @@
             <td class="val">{{ order.ship_to_address or '—' }}</td>
           </tr>
           <tr>
-            <td class="lbl">Point of Exit</td>
+            <td class="lbl">Point Of Exit</td>
             <td class="sep">:</td>
             <td class="val">{{ order.point_of_exit_name or '—' }}</td>
           </tr>
           <tr>
-            <td class="lbl">Point of Discharge</td>
+            <td class="lbl">Point Of Discharge</td>
             <td class="sep">:</td>
             <td class="val">{{ order.Ship_To_PointOfDischarge or '—' }}</td>
           </tr>
@@ -730,18 +745,17 @@
     <table class="items-teal">
       <thead>
         <tr>
-          <th style="width:35px">#</th>
           <th style="width:90px">Item ID</th>
           <th>Item Description</th>
-          <th style="width:80px">UOM</th>
+          <th style="width:100px">Unit of Measure</th>
           <th style="width:80px">Quantity</th>
           {% if order.show_prices %}
           <th style="width:90px">Unit Price<span class="currency"> ({{ order.DOCurrency }})</span></th>
-          <th style="width:90px">Total<span class="currency"> ({{ order.DOCurrency }})</span></th>
+          <th style="width:90px">Total Price<span class="currency"> ({{ order.DOCurrency }})</span></th>
           {% endif %}
           <th style="width:80px">Container</th>
           <th style="width:60px">Truck</th>
-          <th style="width:80px">Load Seq</th>
+          <th style="width:120px">Sequence of Loading</th>
           <th>Remarks</th>
           {% if order.can_edit %}<th style="width:40px"></th>{% endif %}
         </tr>
@@ -755,20 +769,18 @@
         {% set ns.total_containers = ns.total_containers + (item.Container|default(0)|int) %}
         {% set ns.total_trucks = ns.total_trucks + (item.Truck|default(0)|int) %}
         <tr>
-          <td style="text-align:center">{{ loop.index }}</td>
           <td>{{ item.Product_ID or '—' }}</td>
-          <td style="font-weight:var(--font-medium);">{{ item.product_name or '—' }}</td>
+          <td>{{ item.product_name or '—' }}</td>
           <td style="text-align:center">{{ item.Unit_Of_Measure or '—' }}</td>
           <td class="qty-cell">{{ "%.2f"|format(item.Quantity|default(0)|float) }}</td>
           {% if order.show_prices %}
           <td class="num">{{ "%.2f"|format(item.Unit_Price|default(0)|float) }}</td>
-          <td class="num" style="font-weight:var(--font-semibold);">{{ "%.2f"|format(item.Total_Amount|default(0)|float)
-            }}</td>
+          <td class="num">{{ "%.2f"|format(item.Total_Amount|default(0)|float) }}</td>
           {% endif %}
           <td style="text-align:center">{{ item.Container|default(0) }}</td>
           <td style="text-align:center">{{ item.Truck|default(0) }}</td>
-          <td style="text-align:center">{{ item.Loading_Sequence or '—' }}</td>
-          <td>{{ item.Remarks or '—' }}</td>
+          <td style="text-align:center">{{ item.Loading_Sequence or '' }}</td>
+          <td>{{ item.Remarks or '' }}</td>
           {% if order.can_edit %}
           <td>
             <form method="post"
@@ -790,7 +802,7 @@
 
         <!-- Totals row -->
         <tr class="totals-row">
-          <td colspan="4" class="total-lbl">Total</td>
+          <td colspan="3" class="total-lbl">Total</td>
           <td class="total-val">{{ "%.2f"|format(ns.total_qty) }}</td>
           {% if order.show_prices %}
           <td></td>
@@ -802,27 +814,28 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="{{ 11 + (1 if order.can_edit else 0) }}"
+          <td colspan="{{ 10 + (1 if order.can_edit else 0) }}"
             style="text-align:center;padding:var(--sp-8);color:var(--slate-400);">No line items yet.</td>
         </tr>
         {% endif %}
       </tbody>
     </table>
 
-    <!-- Notify Party / Shipping Agent -->
-    <div class="notify-row">
-      <div class="notify-row__left">
-        <u>Notify Party</u> : {{ order.Notify_Party or 'Same as Consignee' }}
-      </div>
-      <div class="notify-row__right">
-        <u>Shipping Agent</u> : {{ order.Shipping_Agent or '—' }}
+    <!-- Marks & Numbers -->
+    <div class="notify-row" style="border-bottom: 1px solid var(--slate-200);">
+      <div class="notify-row__left" style="width:100%;">
+        <u>Marks &amp; Numbers</u>: {{ order.Marks_Numbers or 'N/A' }}
       </div>
     </div>
 
-    <!-- Audit row -->
-    <div class="audit-row">
-      <span><strong>Created By:</strong> {{ order.creator_first }} {{ order.creator_last }}</span>
-      <span><strong>Created On:</strong> {{ order.created_on_fmt or '—' }}</span>
+    <!-- Notify Party / Shipping Agent -->
+    <div class="notify-row">
+      <div class="notify-row__left">
+        <u>Notify Party</u>:{{ order.Notify_Party or 'Same as Consignee' }}
+      </div>
+      <div class="notify-row__right">
+        <u>Shipping Agent</u>:{{ order.Shipping_Agent or '—' }}
+      </div>
     </div>
 
     <!-- QR Code (only after logistics confirmation) -->
@@ -837,9 +850,9 @@
 
   <!-- Add item form (below the document) -->
   {% if order.can_edit %}
-  <div class="card">
-    <div class="card__body">
-      <div class="add-item-form">
+  <div class="card" style="overflow:visible">
+    <div class="card__body" style="overflow:visible">
+      <div class="add-item-form" style="overflow:visible">
         <h4
           style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--sp-3);color:var(--slate-700);">
           Add Item</h4>
@@ -847,7 +860,7 @@
           <div class="add-item-grid">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Product</label>
-              <select name="product_id" class="form-select" required>
+              <select name="product_id" class="form-select ss-target" required>
                 <option value="">Select Product</option>
                 {% for p in order.get('products', []) %}
                 <option value="{{ p.Product_ID }}">{{ p.Name }}</option>
@@ -1179,4 +1192,76 @@
     container.innerHTML = html;
   }
 </script>
+<!-- Ownership notification modal (detail page) -->
+<div id="ownershipModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;max-width:480px;width:92%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <svg xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px;color:#dc2626;flex-shrink:0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      <h3 id="ownershipModalTitle" style="margin:0;font-size:1.1rem;font-weight:700;color:#1e293b;">Not Allowed</h3>
+    </div>
+    <p id="ownershipModalBody" style="color:#475569;margin-bottom:24px;line-height:1.6;"></p>
+    <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:0.875rem;color:#92400e;">
+        <strong>Action required:</strong> This order will be forwarded to the <strong>Customer Manager</strong> for approval. Only after their approval will it be sent to Finance for agreement.
+      </p>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button type="button" id="ownershipModalCancel" class="btn btn-secondary">Cancel</button>
+      <button type="button" id="ownershipModalConfirm" class="btn btn-primary">Proceed Anyway</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  var billO = {{ order.bill_to_ownership_sole_prop|default('')|tojson }};
+  var shipO = {{ order.ship_to_ownership_sole_prop|default('')|tojson }};
+  var _pendingForm = null;
+
+  function getScenario() {
+    if (billO === 'No' && shipO === 'No') return null;
+    if (billO === 'N/A' && shipO === 'N/A') return 'na_parties';
+    if (billO === 'Yes' || shipO === 'Yes' || billO === 'N/A' || shipO === 'N/A') return 'sole_prop';
+    return null;
+  }
+
+  function showModal(scenario) {
+    var modal = document.getElementById('ownershipModal');
+    var title = document.getElementById('ownershipModalTitle');
+    var body  = document.getElementById('ownershipModalBody');
+    modal.style.display = 'flex';
+    if (scenario === 'na_parties') {
+      title.textContent = 'Parties Not Defined';
+      body.textContent  = 'Bill To and Ship To parties are not defined due to unavailable documents (both marked N/A). This order cannot proceed directly to Finance.';
+    } else {
+      title.textContent = 'Sole Proprietorship — Not Allowed';
+      body.textContent  = 'One or both selected parties have Sole Proprietorship ownership. This order is not allowed to go directly to Finance without Customer Manager approval.';
+    }
+  }
+
+  window.doDetailSubmit = function(form) {
+    var scenario = getScenario();
+    if (scenario) {
+      _pendingForm = form;
+      showModal(scenario);
+    } else {
+      form.submit();
+    }
+  };
+
+  document.getElementById('ownershipModalCancel').addEventListener('click', function() {
+    document.getElementById('ownershipModal').style.display = 'none';
+    _pendingForm = null;
+  });
+
+  document.getElementById('ownershipModalConfirm').addEventListener('click', function() {
+    document.getElementById('ownershipModal').style.display = 'none';
+    if (_pendingForm) { _pendingForm.submit(); }
+  });
+
+  document.getElementById('ownershipModal').addEventListener('click', function(e) {
+    if (e.target === this) { this.style.display = 'none'; _pendingForm = null; }
+  });
+})();
+</script>
+{% include "delivery_orders/_searchable_select.html" %}
 {% endblock %}

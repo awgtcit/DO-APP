@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Orders — Delivery Orders{% endblock %}
 
 {% block head %}
@@ -74,6 +74,11 @@
   .status-pill--delivered {
     background: #d1fae5;
     color: #065f46;
+  }
+
+  .status-pill--pending-customer-approval {
+    background: #ede9fe;
+    color: #5b21b6;
   }
 
   .clickable-row {

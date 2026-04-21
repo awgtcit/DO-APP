@@ -217,8 +217,17 @@
     </tr>
   </table>
 
-  <!-- ═══ Notify Party / Shipping Agent ═══ -->
+  <!-- ═══ Marks & Numbers ═══ -->
   <table style="width:100%; margin-top:10px; border-top:1px solid #999;">
+    <tr>
+      <td style="width:100%; padding:8px 10px; font-size:11px;">
+        <b style="color:#005528; text-decoration:underline;">Marks &amp; Numbers</b>: {{ order.Marks_Numbers or 'N/A' }}
+      </td>
+    </tr>
+  </table>
+
+  <!-- ═══ Notify Party / Shipping Agent ═══ -->
+  <table style="width:100%; border-top:1px solid #999;">
     <tr>
       <td style="width:50%; padding:8px 10px; font-size:11px;">
         <b style="color:#005528; text-decoration:underline;">Notify Party</b>:{{ order.Notify_Party or 'Same as Consignee' }}

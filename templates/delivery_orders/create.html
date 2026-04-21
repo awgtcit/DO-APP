@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Create Delivery Order{% endblock %}
 
 {% block head %}
@@ -142,7 +142,10 @@
             <select name="bill_to" class="form-select ss-target" id="billToSelect" required>
               <option value="">Select Customer</option>
               {% for c in lookups.bill_to_list %}
-              <option value="{{ c.SapCode }}" {{ 'selected' if form.get('bill_to')|string == c.SapCode|string }}>
+              <option value="{{ c.SapCode }}"
+                data-derived-marks="{{ c.DerivedMarksNumbers|default('', true) }}"
+                data-ownership="{{ c.Ownership_Sole_Proprietorship|default('No', true) }}"
+                {{ 'selected' if form.get('bill_to')|string == c.SapCode|string }}>
                 {{ c.SapCodeFromSAP or c.SapCode }} | {{ c.Name }}
               </option>
               {% endfor %}
@@ -153,7 +156,9 @@
             <select name="ship_to" class="form-select ss-target" id="shipToSelect" required>
               <option value="">Select Ship To</option>
               {% for c in lookups.bill_to_list %}
-              <option value="{{ c.SapCode }}" {{ 'selected' if form.get('ship_to')|string == c.SapCode|string }}>
+              <option value="{{ c.SapCode }}"
+                data-ownership="{{ c.Ownership_Sole_Proprietorship|default('No', true) }}"
+                {{ 'selected' if form.get('ship_to')|string == c.SapCode|string }}>
                 {{ c.SapCodeFromSAP or c.SapCode }} | {{ c.Name }}
               </option>
               {% endfor %}
@@ -192,6 +197,11 @@
             <label class="form-label">Shipping Agent *</label>
             <input type="text" name="shipping_agent" class="form-input" required value="{{ form.get('shipping_agent', '') }}">
           </div>
+           <div class="form-group">
+             <label class="form-label">Marks & Numbers</label>
+             <input type="text" id="marksNumbers" name="marks_numbers" class="form-input" readonly value="{{ form.get('marks_numbers', '') }}">
+             <small style="color: var(--slate-500); margin-top: 4px; display: block;">Auto-filled based on selected Bill To customer</small>
+           </div>
         </div>
       </div>
 
@@ -215,4 +225,117 @@
 
 {% include "delivery_orders/_restricted_word_check.html" %}
 {% include "delivery_orders/_searchable_select.html" %}
+
+<!-- Ownership notification modal -->
+<div id="ownershipModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;max-width:480px;width:92%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <svg xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px;color:#dc2626;flex-shrink:0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      <h3 id="ownershipModalTitle" style="margin:0;font-size:1.1rem;font-weight:700;color:#1e293b;">Not Allowed</h3>
+    </div>
+    <p id="ownershipModalBody" style="color:#475569;margin-bottom:24px;line-height:1.6;"></p>
+    <div style="background:#fef3c7;border:1px solid #fbbf24;border-radius:8px;padding:12px 16px;margin-bottom:24px;">
+      <p style="margin:0;font-size:0.875rem;color:#92400e;">
+        <strong>Action required:</strong> This order will be forwarded to the <strong>Customer Manager</strong> for approval. Only after their approval will it be sent to Finance for agreement.
+      </p>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button type="button" id="ownershipModalCancel" class="btn btn-secondary">Cancel</button>
+      <button type="button" id="ownershipModalConfirm" class="btn btn-primary">Proceed Anyway</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function() {
+    const billToSelect  = document.getElementById('billToSelect');
+    const shipToSelect  = document.getElementById('shipToSelect');
+    const marksInput    = document.getElementById('marksNumbers');
+    const form          = document.getElementById('createOrderForm');
+    const modal         = document.getElementById('ownershipModal');
+    const modalTitle    = document.getElementById('ownershipModalTitle');
+    const modalBody     = document.getElementById('ownershipModalBody');
+    const modalCancel   = document.getElementById('ownershipModalCancel');
+    const modalConfirm  = document.getElementById('ownershipModalConfirm');
+
+    let _userConfirmedOwnership = false;
+
+    function getOwnership(select) {
+      if (!select || !select.value) return 'No';
+      const opt = select.options[select.selectedIndex];
+      return (opt && opt.dataset.ownership) ? opt.dataset.ownership.trim() : 'No';
+    }
+
+    function getOwnershipScenario() {
+      const b = getOwnership(billToSelect);
+      const s = getOwnership(shipToSelect);
+      if (b === 'No' && s === 'No') return null;
+      if (b === 'N/A' && s === 'N/A') return 'na_parties';
+      return 'sole_prop';
+    }
+
+    function applyMarksNumbersFromBillTo() {
+      if (!billToSelect || !marksInput) return;
+      const opt = billToSelect.options[billToSelect.selectedIndex];
+      if (!opt || !billToSelect.value) { marksInput.value = ''; return; }
+      marksInput.value = opt.dataset.derivedMarks || '';
+    }
+
+    function showOwnershipModal(scenario) {
+      modal.style.display = 'flex';
+      if (scenario === 'na_parties') {
+        modalTitle.textContent = 'Parties Not Defined';
+        modalBody.textContent =
+          'Bill To and Ship To parties are not defined due to unavailable documents (both marked N/A). ' +
+          'This order cannot proceed directly to Finance.';
+      } else {
+        modalTitle.textContent = 'Sole Proprietorship — Not Allowed';
+        modalBody.textContent =
+          'One or both selected parties have Sole Proprietorship ownership. ' +
+          'This order is not allowed to go directly to Finance without Customer Manager approval.';
+      }
+    }
+
+    function hideModal() {
+      modal.style.display = 'none';
+    }
+
+    billToSelect?.addEventListener('change', function() {
+      applyMarksNumbersFromBillTo();
+      _userConfirmedOwnership = false;
+    });
+
+    shipToSelect?.addEventListener('change', function() {
+      _userConfirmedOwnership = false;
+    });
+
+    modalCancel?.addEventListener('click', function() {
+      hideModal();
+    });
+
+    modalConfirm?.addEventListener('click', function() {
+      hideModal();
+      _userConfirmedOwnership = true;
+      form.submit();
+    });
+
+    modal?.addEventListener('click', function(e) {
+      if (e.target === modal) hideModal();
+    });
+
+    form?.addEventListener('submit', function(e) {
+      if (_userConfirmedOwnership) return; // already confirmed, let submit through
+      const scenario = getOwnershipScenario();
+      if (scenario) {
+        e.preventDefault();
+        showOwnershipModal(scenario);
+      }
+    });
+
+    applyMarksNumbersFromBillTo();
+  })();
+</script>
 {% endblock %}

@@ -1,29 +1,51 @@
 """
-Admin Settings controller — all /admin/settings routes.
+Admin controller — all /admin routes.
+Merges settings (modules, restricted words, workflow) and
+Auth-sourced user listing into a single admin panel.
 Protected by @role_required("admin", "it_admin").
 """
 
+import logging
+import os
+
 from flask import (
-    Blueprint, flash, redirect, render_template, request, session, url_for,
-    jsonify,
+    Blueprint, flash, g, redirect, render_template, request, session, url_for,
+    jsonify, current_app,
 )
+from werkzeug.routing import BuildError
 
 from auth.middleware import login_required, role_required
 from services import admin_settings_service as svc
 from rules.admin_settings_rules import (
-    validate_user,
-    validate_password_reset,
     validate_restricted_word,
     validate_workflow_status,
     validate_workflow_transition,
 )
+from sdk import auth_client
+
+logger = logging.getLogger(__name__)
 
 admin_settings_bp = Blueprint(
-    "admin_settings",
+    "admin",
     __name__,
-    url_prefix="/admin/settings",
+    url_prefix="/admin",
     template_folder="../templates/admin_settings",
 )
+
+
+@admin_settings_bp.app_context_processor
+def _admin_embed_ctx():
+    """Inject embed-mode variables into all templates."""
+    embed = (
+        request.args.get('embed') == '1'
+        or request.form.get('embed') == '1'
+        or session.get('embed_mode', False)
+    )
+    return dict(
+        base_template='base_embed.html' if embed else 'base.html',
+        embed_mode=embed,
+        embed_token=getattr(g, 'embed_session_token', ''),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -34,191 +56,32 @@ admin_settings_bp = Blueprint(
 @login_required
 @role_required("admin", "it_admin")
 def index():
-    return render_template("admin_settings/index.html")
+    # Defensive: avoid hard failure if an optional admin endpoint is unavailable.
+    try:
+        database_url = url_for("admin.database")
+    except BuildError:
+        database_url = None
+    return render_template("admin_settings/index.html", database_url=database_url)
 
 
 # ═══════════════════════════════════════════════════════════════
-#  USER MANAGEMENT
+#  USERS — Auth-sourced (read-only, assigned to this app)
 # ═══════════════════════════════════════════════════════════════
 
 @admin_settings_bp.route("/users")
 @login_required
 @role_required("admin", "it_admin")
 def users():
-    all_users = svc.list_users()
-    return render_template("admin_settings/users.html", users=all_users)
-
-
-@admin_settings_bp.route("/users/new", methods=["GET", "POST"])
-@login_required
-@role_required("admin", "it_admin")
-def user_create():
-    departments = svc.get_departments()
-    designations = svc.get_designations()
-
-    if request.method == "POST":
-        data = {
-            "first_name": request.form.get("first_name", "").strip(),
-            "last_name": request.form.get("last_name", "").strip(),
-            "email": request.form.get("email", "").strip(),
-            "username": request.form.get("username", "").strip(),
-            "password": request.form.get("password", ""),
-            "department_id": request.form.get("department_id"),
-            "designation_id": request.form.get("designation_id"),
-            "group_id": request.form.get("group_id", "0"),
-        }
-        errors = validate_user(data, is_new=True)
-        if errors:
-            for e in errors:
-                flash(e, "danger")
-            return render_template(
-                "admin_settings/user_form.html",
-                mode="create", data=data,
-                departments=departments, designations=designations,
-            )
-        try:
-            new_id = svc.create_user(data)
-            flash(f"User created successfully (ID: {new_id}).", "success")
-            return redirect(url_for("admin_settings.users"))
-        except Exception as exc:
-            flash(f"Error creating user: {exc}", "danger")
-            return render_template(
-                "admin_settings/user_form.html",
-                mode="create", data=data,
-                departments=departments, designations=designations,
-            )
-
-    return render_template(
-        "admin_settings/user_form.html",
-        mode="create", data={},
-        departments=departments, designations=designations,
-    )
-
-
-@admin_settings_bp.route("/users/<int:emp_id>/edit", methods=["GET", "POST"])
-@login_required
-@role_required("admin", "it_admin")
-def user_edit(emp_id):
-    user = svc.get_user(emp_id)
-    if not user:
-        flash("User not found.", "danger")
-        return redirect(url_for("admin_settings.users"))
-
-    departments = svc.get_departments()
-    designations = svc.get_designations()
-
-    if request.method == "POST":
-        data = {
-            "first_name": request.form.get("first_name", "").strip(),
-            "last_name": request.form.get("last_name", "").strip(),
-            "email": request.form.get("email", "").strip(),
-            "username": request.form.get("username", "").strip(),
-            "department_id": request.form.get("department_id"),
-            "designation_id": request.form.get("designation_id"),
-            "group_id": request.form.get("group_id", "0"),
-        }
-        errors = validate_user(data, is_new=False)
-        if errors:
-            for e in errors:
-                flash(e, "danger")
-            return render_template(
-                "admin_settings/user_form.html",
-                mode="edit", data=data, user=user,
-                departments=departments, designations=designations,
-            )
-        try:
-            svc.update_user(emp_id, data)
-            flash("User updated successfully.", "success")
-            return redirect(url_for("admin_settings.users"))
-        except Exception as exc:
-            flash(f"Error updating user: {exc}", "danger")
-            return render_template(
-                "admin_settings/user_form.html",
-                mode="edit", data=data, user=user,
-                departments=departments, designations=designations,
-            )
-
-    data = {
-        "first_name": user.get("FirstName", ""),
-        "last_name": user.get("LastName", ""),
-        "email": user.get("EmailAddress", ""),
-        "username": user.get("CredUsername", ""),
-        "department_id": user.get("DeparmentID"),
-        "designation_id": user.get("DesignationID"),
-        "group_id": user.get("GroupID", 0),
-    }
-    return render_template(
-        "admin_settings/user_form.html",
-        mode="edit", data=data, user=user,
-        departments=departments, designations=designations,
-    )
-
-
-@admin_settings_bp.route("/users/<int:emp_id>/reset-password", methods=["POST"])
-@login_required
-@role_required("admin", "it_admin")
-def user_reset_password(emp_id):
-    new_password = request.form.get("new_password", "")
-    errors = validate_password_reset(new_password)
-    if errors:
-        for e in errors:
-            flash(e, "danger")
-        return redirect(url_for("admin_settings.user_edit", emp_id=emp_id))
-
-    svc.reset_password(emp_id, new_password)
-    flash("Password reset successfully.", "success")
-    return redirect(url_for("admin_settings.user_edit", emp_id=emp_id))
-
-
-@admin_settings_bp.route("/users/<int:emp_id>/delete", methods=["POST"])
-@login_required
-@role_required("admin", "it_admin")
-def user_delete(emp_id):
-    try:
-        svc.delete_user(emp_id)
-        flash("User deleted successfully.", "success")
-    except Exception as exc:
-        flash(f"Error deleting user: {exc}", "danger")
-    return redirect(url_for("admin_settings.users"))
-
-
-# ── User Permissions ──────────────────────────────────────────
-
-@admin_settings_bp.route("/users/<int:emp_id>/permissions", methods=["GET", "POST"])
-@login_required
-@role_required("admin", "it_admin")
-def user_permissions(emp_id):
-    user = svc.get_user(emp_id)
-    if not user:
-        flash("User not found.", "danger")
-        return redirect(url_for("admin_settings.users"))
-
-    if request.method == "POST":
-        perm_data = {
-            "it_admin": request.form.get("it_admin"),
-            "uploader": request.form.get("uploader"),
-            "approver": request.form.get("approver"),
-            "reviewer1": request.form.get("reviewer1"),
-            "reviewer2": request.form.get("reviewer2"),
-        }
-        svc.save_user_permissions(emp_id, perm_data)
-
-        # Save access groups
-        group_ids = request.form.getlist("access_groups", type=int)
-        svc.save_user_access_groups(emp_id, group_ids)
-
-        flash("Permissions updated successfully.", "success")
-        return redirect(url_for("admin_settings.user_permissions", emp_id=emp_id))
-
-    permissions = svc.get_user_permissions(emp_id)
-    user_groups = svc.get_user_access_groups(emp_id)
-    all_groups = svc.get_all_access_groups()
-
-    return render_template(
-        "admin_settings/user_permissions.html",
-        user=user, permissions=permissions,
-        user_groups=user_groups, all_groups=all_groups,
-    )
+    """Show users assigned to this application via Auth Platform."""
+    app_id = current_app.config.get('AUTH_APP_APPLICATION_ID', '')
+    page = request.args.get('page', 1, type=int)
+    users_list, meta = auth_client.get_app_users(app_id, page=page, per_page=30)
+    if users_list is None:
+        users_list = []
+        meta = {}
+        flash("Could not load users from Auth Platform.", "warning")
+    return render_template("admin_settings/users.html",
+                           users=users_list, meta=meta, page=page)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -244,7 +107,7 @@ def restricted_words():
                     flash(f"Word '{word}' is already in the restricted list.", "warning")
                 else:
                     flash(f"Error adding word: {exc}", "danger")
-        return redirect(url_for("admin_settings.restricted_words"))
+        return redirect(url_for("admin.restricted_words"))
 
     words = svc.list_restricted_words()
     return render_template("admin_settings/restricted_words.html", words=words)
@@ -256,7 +119,7 @@ def restricted_words():
 def restricted_word_delete(word_id):
     svc.delete_restricted_word(word_id)
     flash("Word removed from restricted list.", "success")
-    return redirect(url_for("admin_settings.restricted_words"))
+    return redirect(url_for("admin.restricted_words"))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -280,7 +143,7 @@ def module_toggle(module_id):
     mod = svc.get_module(module_id)
     name = mod["display_name"] if mod else "Module"
     flash(f"{name} {'enabled' if is_enabled else 'disabled'}.", "success")
-    return redirect(url_for("admin_settings.modules"))
+    return redirect(url_for("admin.modules"))
 
 
 @admin_settings_bp.route("/modules/<int:module_id>/access", methods=["GET", "POST"])
@@ -290,7 +153,9 @@ def module_access(module_id):
     mod = svc.get_module(module_id)
     if not mod:
         flash("Module not found.", "danger")
-        return redirect(url_for("admin_settings.modules"))
+        return redirect(url_for("admin.modules"))
+
+    app_id = current_app.config.get('AUTH_APP_APPLICATION_ID', '')
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -306,42 +171,74 @@ def module_access(module_id):
             flash("Group access updated.", "success")
 
         elif action == "save_user":
-            user_emp_id = request.form.get("emp_id", type=int)
+            user_emp_id = request.form.get("emp_id", "").strip()
             user_enabled = request.form.get("user_enabled") == "1"
             if user_emp_id:
-                svc.set_module_user_access(module_id, user_emp_id, user_enabled)
-                flash("User access updated.", "success")
+                resolved_emp_id = svc.resolve_or_create_local_emp_id(
+                    app_id,
+                    user_emp_id,
+                    create_if_missing=True,
+                )
+                if resolved_emp_id is None:
+                    flash("Unable to resolve the selected user to a local employee record.", "danger")
+                else:
+                    svc.set_module_user_access(module_id, resolved_emp_id, user_enabled)
+                    flash("User access updated.", "success")
 
         elif action == "assign_role":
-            user_emp_id = request.form.get("emp_id", type=int)
+            user_emp_id = request.form.get("emp_id", "").strip()
             role_key = request.form.get("role_key", "").strip()
             if user_emp_id and role_key:
-                assigned_by = session.get("emp_id") or 0
-                svc.assign_user_module_role(
-                    module_id, user_emp_id, role_key, assigned_by
+                resolved_emp_id = svc.resolve_or_create_local_emp_id(
+                    app_id,
+                    user_emp_id,
+                    create_if_missing=True,
                 )
-                flash(f"Role assigned.", "success")
+                if resolved_emp_id is None:
+                    flash("Unable to resolve the selected user to a local employee record.", "danger")
+                else:
+                    assigned_by = session.get("emp_id") or 0
+                    svc.assign_user_module_role(
+                        module_id, resolved_emp_id, role_key, assigned_by
+                    )
+                    flash("Role assigned.", "success")
 
         elif action == "revoke_role":
-            user_emp_id = request.form.get("emp_id", type=int)
+            user_emp_id = request.form.get("emp_id", "").strip()
             role_key = request.form.get("role_key", "").strip()
             if user_emp_id and role_key:
-                svc.revoke_user_module_role(module_id, user_emp_id, role_key)
-                flash("Role revoked.", "success")
+                resolved_emp_id = svc.resolve_or_create_local_emp_id(
+                    app_id,
+                    user_emp_id,
+                    create_if_missing=False,
+                )
+                if resolved_emp_id is None:
+                    flash("Unable to resolve the selected user to a local employee record.", "danger")
+                else:
+                    svc.revoke_user_module_role(module_id, resolved_emp_id, role_key)
+                    flash("Role revoked.", "success")
 
         elif action == "set_user_roles":
-            user_emp_id = request.form.get("emp_id", type=int)
+            user_emp_id = request.form.get("emp_id", "").strip()
             available = svc.get_available_roles_for_module(mod["module_key"])
             selected = [
                 rk for rk in available
                 if request.form.get(f"role_{rk}") == "1"
             ]
             if user_emp_id:
-                assigned_by = session.get("emp_id") or 0
-                svc.set_user_module_roles(
-                    module_id, user_emp_id, selected, assigned_by
+                resolved_emp_id = svc.resolve_or_create_local_emp_id(
+                    app_id,
+                    user_emp_id,
+                    create_if_missing=True,
                 )
-                flash("User roles updated.", "success")
+                if resolved_emp_id is None:
+                    flash("Unable to resolve the selected user to a local employee record.", "danger")
+                else:
+                    assigned_by = session.get("emp_id") or 0
+                    svc.set_user_module_roles(
+                        module_id, resolved_emp_id, selected, assigned_by
+                    )
+                    flash("User roles updated.", "success")
 
         elif action == "add_role":
             role_key = request.form.get("role_key", "").strip().lower().replace(" ", "_")
@@ -362,7 +259,7 @@ def module_access(module_id):
                 svc.delete_custom_role(role_id)
                 flash("Custom role removed.", "success")
 
-        return redirect(url_for("admin_settings.module_access", module_id=module_id))
+        return redirect(url_for("admin.module_access", module_id=module_id))
 
     all_groups = svc.get_all_access_groups()
     group_access = svc.get_module_group_access(module_id)
@@ -373,13 +270,16 @@ def module_access(module_id):
         user_access = get_module_user_access(module_id)
     except Exception:
         pass
-    all_users = svc.list_users()
+
+    # Fetch users from Auth Platform (cached in service layer)
+    all_users = svc.get_auth_users(app_id)
 
     # Per-module roles
     available_roles = svc.get_available_roles_for_module(mod["module_key"])
     custom_roles = svc.get_custom_roles(mod["module_key"])
     builtin_role_keys = set(svc.MODULE_ROLES.get(mod["module_key"], {}).keys())
     user_role_assignments = svc.get_user_module_roles(module_id)
+    all_users, user_role_assignments = svc.enrich_module_role_users(all_users, user_role_assignments)
 
     # Build role_users_map: {role_key: [user_assignment_dicts]}
     role_users_map: dict[str, list[dict]] = {rk: [] for rk in available_roles}
@@ -389,7 +289,7 @@ def module_access(module_id):
             role_users_map[rk].append(ura)
 
     # Set of emp_ids already assigned to each role (for the "add" dropdown)
-    role_assigned_ids: dict[str, set[int]] = {
+    role_assigned_ids: dict[str, set[str]] = {
         rk: {u["emp_id"] for u in users}
         for rk, users in role_users_map.items()
     }
@@ -450,7 +350,7 @@ def workflow_status_add():
             flash("Status added.", "success")
         except Exception as exc:
             flash(f"Error: {exc}", "danger")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 @admin_settings_bp.route("/workflow/status/<int:status_id>/edit", methods=["POST"])
@@ -465,7 +365,7 @@ def workflow_status_edit(status_id):
     }
     svc.update_workflow_status(status_id, data)
     flash("Status updated.", "success")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 @admin_settings_bp.route("/workflow/status/<int:status_id>/delete", methods=["POST"])
@@ -475,7 +375,7 @@ def workflow_status_delete(status_id):
     module_key = request.form.get("module_key", "delivery_orders")
     svc.delete_workflow_status(status_id)
     flash("Status and related transitions deleted.", "success")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 @admin_settings_bp.route("/workflow/transition/add", methods=["POST"])
@@ -498,7 +398,7 @@ def workflow_transition_add():
             flash("Transition added.", "success")
         except Exception as exc:
             flash(f"Error: {exc}", "danger")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 @admin_settings_bp.route("/workflow/transition/<int:transition_id>/edit", methods=["POST"])
@@ -512,7 +412,7 @@ def workflow_transition_edit(transition_id):
         flash("Transition role updated.", "success")
     else:
         flash("Role is required.", "danger")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 @admin_settings_bp.route("/workflow/transition/<int:transition_id>/delete", methods=["POST"])
@@ -522,7 +422,7 @@ def workflow_transition_delete(transition_id):
     module_key = request.form.get("module_key", "delivery_orders")
     svc.delete_workflow_transition(transition_id)
     flash("Transition removed.", "success")
-    return redirect(url_for("admin_settings.workflow", module=module_key))
+    return redirect(url_for("admin.workflow", module=module_key))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -545,3 +445,345 @@ def api_restricted_words_list():
     from repos.admin_settings_repo import get_all_restricted_words_set
     words = sorted(get_all_restricted_words_set())
     return jsonify({"words": words})
+
+
+# ═══════════════════════════════════════════════════════════════
+#  ACCESS CONTROL — Auth Platform (Users / Roles / Matrix)
+# ═══════════════════════════════════════════════════════════════
+
+def _auth_app_id():
+    """Return the application_id for Auth-App API calls."""
+    return current_app.config.get('AUTH_APP_APPLICATION_ID', '')
+
+
+@admin_settings_bp.route("/access-control")
+@login_required
+@role_required("admin", "it_admin")
+def access_control():
+    """Main Access Control page with Users / Roles / Permission Matrix tabs."""
+    tab = request.args.get('tab', 'users')
+    app_id = _auth_app_id()
+
+    users_list = []
+    users_meta = {}
+    roles = []
+    matrix_data = {}
+    categories = {}
+    all_perms = []
+
+    if tab == 'users':
+        page = request.args.get('page', 1, type=int)
+        data, meta = auth_client.get_app_users(app_id, page=page, per_page=30)
+        if data is not None:
+            users_list = data
+            users_meta = meta or {}
+        else:
+            flash("Could not load users from Auth Platform.", "warning")
+
+    elif tab == 'roles':
+        roles = auth_client.get_app_roles(app_id)
+
+    elif tab == 'matrix':
+        roles = auth_client.get_app_roles(app_id)
+        all_perms = auth_client.get_all_permissions(application_id=app_id)
+        # Fetch role permissions in parallel to avoid O(n) sequential calls
+        from concurrent.futures import ThreadPoolExecutor
+        def _fetch_rp(role):
+            rp = auth_client.get_role_permissions(role['id'])
+            return role['id'], [p['id'] for p in rp]
+        with ThreadPoolExecutor(max_workers=min(len(roles), 8)) as pool:
+            for rid, pids in pool.map(_fetch_rp, roles):
+                matrix_data[rid] = pids
+        for p in all_perms:
+            cat = p.get('category', 'Other')
+            categories.setdefault(cat, []).append(p)
+
+    return render_template(
+        "admin_settings/access_control.html",
+        tab=tab,
+        users=users_list,
+        meta=users_meta,
+        page=request.args.get('page', 1, type=int),
+        roles=roles,
+        matrix=matrix_data,
+        categories=categories,
+    )
+
+
+@admin_settings_bp.route("/access-control/users/<user_id>/roles")
+@login_required
+@role_required("admin", "it_admin")
+def ac_user_roles(user_id):
+    """Show user role management page."""
+    app_id = _auth_app_id()
+    user_roles = auth_client.get_user_roles(user_id, application_id=app_id)
+    all_roles = auth_client.get_app_roles(app_id)
+    assigned_codes = {r['role_code'] for r in user_roles}
+    user_info = _find_user_by_id(app_id, user_id)
+
+    return render_template(
+        "admin_settings/ac_user_roles.html",
+        user_id=user_id,
+        user_info=user_info,
+        user_roles=user_roles,
+        all_roles=all_roles,
+        assigned_codes=assigned_codes,
+    )
+
+
+@admin_settings_bp.route("/access-control/users/<user_id>/roles", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def ac_update_user_roles(user_id):
+    """Sync the selected role codes for a user via Auth-App."""
+    app_id = _auth_app_id()
+    role_codes = request.form.getlist('role_codes')
+    result = auth_client.sync_user_roles(user_id, app_id, role_codes)
+    if result.get('success'):
+        flash('User roles updated.', 'success')
+    else:
+        flash(f"Failed to update roles: {result.get('message', 'Unknown error')}", 'danger')
+    return redirect(url_for('admin.access_control', tab='users'))
+
+
+@admin_settings_bp.route("/access-control/roles/create", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "it_admin")
+def ac_create_role():
+    """Create a new role via Auth-App."""
+    import re as re_mod
+    if request.method == "POST":
+        app_id = _auth_app_id()
+        name = (request.form.get('role_name') or '').strip()
+        code = (request.form.get('role_code') or '').strip().upper()
+        description = (request.form.get('role_description') or '').strip()
+
+        if not name or not code:
+            flash('Role name and code are required.', 'danger')
+            return redirect(url_for('admin.ac_create_role'))
+
+        if not re_mod.match(r'^DO_[A-Z0-9_]{2,30}$', code):
+            flash('Role code must start with DO_ followed by 2-30 uppercase letters/digits/underscores.', 'danger')
+            return redirect(url_for('admin.ac_create_role'))
+
+        result = auth_client.create_role(app_id, code, name, description)
+        if result.get('success'):
+            flash(f'Role "{name}" created successfully.', 'success')
+        else:
+            flash(f"Failed to create role: {result.get('message', 'Unknown error')}", 'danger')
+        return redirect(url_for('admin.access_control', tab='roles'))
+
+    return render_template("admin_settings/ac_create_role.html")
+
+
+@admin_settings_bp.route("/access-control/roles/<role_id>/permissions")
+@login_required
+@role_required("admin", "it_admin")
+def ac_role_permissions(role_id):
+    """Show role permissions page with organized CRUD + Special layout."""
+    app_id = _auth_app_id()
+    role_perms = auth_client.get_role_permissions(role_id)
+    all_perms = auth_client.get_all_permissions(application_id=app_id)
+    assigned_ids = {p['id'] for p in role_perms}
+
+    all_roles = auth_client.get_app_roles(app_id)
+    role_name = next((r['name'] for r in all_roles if r['id'] == role_id), 'Role')
+
+    # Organize permissions by category
+    pages = _organize_perms_by_page(all_perms, assigned_ids)
+
+    return render_template(
+        "admin_settings/ac_role_permissions.html",
+        role_id=role_id,
+        role_name=role_name,
+        pages=pages,
+    )
+
+
+@admin_settings_bp.route("/access-control/roles/<role_id>/permissions", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def ac_update_role_permissions(role_id):
+    """Sync permissions for a role (full replace)."""
+    app_id = _auth_app_id()
+    permission_ids = request.form.getlist('permission_ids')
+    result = auth_client.map_role_permissions(role_id, permission_ids, application_id=app_id)
+    if result.get('success'):
+        flash('Role permissions updated.', 'success')
+    else:
+        flash(f"Failed to update permissions: {result.get('message', 'Unknown error')}", 'danger')
+    return redirect(url_for('admin.access_control', tab='roles'))
+
+
+@admin_settings_bp.route("/access-control/refresh-session", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def ac_refresh_session():
+    """Re-fetch current user's permissions from Auth-App and update session."""
+    app_id = _auth_app_id()
+    user_id = session.get('sso_user', {}).get('id')
+    if not user_id:
+        flash('No user in session.', 'danger')
+        return redirect(url_for('admin.access_control'))
+    fresh_perms = auth_client.refresh_session_permissions(user_id, app_id)
+    if fresh_perms:
+        session['sso_permissions'] = fresh_perms
+        flash(f'Permissions refreshed ({len(fresh_perms)} permissions loaded).', 'success')
+    else:
+        flash('Failed to refresh permissions.', 'danger')
+    return redirect(url_for('admin.access_control'))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  DATABASE CONNECTION MANAGER
+# ═══════════════════════════════════════════════════════════════
+
+@admin_settings_bp.route("/database")
+@login_required
+@role_required("admin", "it_admin")
+def database():
+    from services.db_config_service import get_current_config, ALL_TABLES
+    current = get_current_config()
+    return render_template(
+        "admin_settings/db_config.html",
+        current=current,
+        all_tables=ALL_TABLES,
+    )
+
+
+@admin_settings_bp.route("/database/test", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def database_test():
+    from services.db_config_service import test_connection
+    data = request.get_json(force=True) or {}
+    cfg = {
+        "server": data.get("server", "").strip(),
+        "database": data.get("database", "").strip(),
+        "user": data.get("user", "").strip(),
+        "password": data.get("password", ""),
+        "driver": data.get("driver", "").strip() or "{ODBC Driver 17 for SQL Server}",
+    }
+    if not cfg["server"] or not cfg["database"] or not cfg["user"]:
+        return jsonify({"ok": False, "error": "Server, database and user are required."})
+    result = test_connection(cfg)
+    if not result.get("ok"):
+        logger.warning(
+            "Database test failed for server=%s db=%s user=%s: %s",
+            cfg.get("server"), cfg.get("database"), cfg.get("user"), result.get("error", ""),
+        )
+        return jsonify({"ok": False, "error": "Unable to connect or prepare database with the provided settings."})
+    return jsonify(result)
+
+
+@admin_settings_bp.route("/database/migrate-and-connect", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def database_migrate_and_connect():
+    from services.db_config_service import ensure_database_exists, migrate_tables, save_and_switch
+    data = request.get_json(force=True) or {}
+    cfg = {
+        "server": data.get("server", "").strip(),
+        "database": data.get("database", "").strip(),
+        "user": data.get("user", "").strip(),
+        "password": data.get("password", ""),
+        "driver": data.get("driver", "").strip() or "{ODBC Driver 17 for SQL Server}",
+    }
+    tables = data.get("tables") or None
+    include_data = bool(data.get("include_data", True))
+    copy_mode = (data.get("copy_mode") or "masters_only").strip().lower()
+
+    ensure_result = ensure_database_exists(cfg)
+    if not ensure_result.get("ok"):
+        logger.warning(
+            "Database prepare failed (migrate-and-connect) for server=%s db=%s user=%s: %s",
+            cfg.get("server"), cfg.get("database"), cfg.get("user"), ensure_result.get("error", ""),
+        )
+        return jsonify({"ok": False, "error": "Unable to create or access target database with the provided settings."})
+
+    results = migrate_tables(cfg, tables=tables, include_data=include_data, copy_mode=copy_mode)
+    save_and_switch(cfg)
+    logger.info("DB config switched to server=%s db=%s by user=%s",
+                cfg["server"], cfg["database"], session.get("email"))
+    return jsonify({"ok": True, "results": results, "db_created": bool(ensure_result.get("created"))})
+
+
+@admin_settings_bp.route("/database/connect-only", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def database_connect_only():
+    from services.db_config_service import ensure_database_exists, save_and_switch
+    data = request.get_json(force=True) or {}
+    cfg = {
+        "server": data.get("server", "").strip(),
+        "database": data.get("database", "").strip(),
+        "user": data.get("user", "").strip(),
+        "password": data.get("password", ""),
+        "driver": data.get("driver", "").strip() or "{ODBC Driver 17 for SQL Server}",
+    }
+    if not cfg["server"] or not cfg["database"] or not cfg["user"]:
+        return jsonify({"ok": False, "error": "Server, database and user are required."})
+
+    ensure_result = ensure_database_exists(cfg)
+    if not ensure_result.get("ok"):
+        logger.warning(
+            "Database prepare failed (connect-only) for server=%s db=%s user=%s: %s",
+            cfg.get("server"), cfg.get("database"), cfg.get("user"), ensure_result.get("error", ""),
+        )
+        return jsonify({"ok": False, "error": "Unable to create or access target database with the provided settings."})
+
+    save_and_switch(cfg)
+    logger.info("DB config switched (no migration) to server=%s db=%s by user=%s",
+                cfg["server"], cfg["database"], session.get("email"))
+    return jsonify({"ok": True, "db_created": bool(ensure_result.get("created"))})
+
+
+# ── Helpers ───────────────────────────────────────────────────
+
+def _find_user_by_id(app_id, user_id):
+    """Look up a single user's info from the Auth Platform."""
+    return svc.find_auth_user(app_id, user_id) or {}
+
+
+# ── Permission grouping helper ───────────────────────────────
+
+_CRUD_OPS = {'VIEW', 'CREATE', 'EDIT', 'UPDATE', 'DELETE'}
+
+_SPECIAL_OP_LABELS = {
+    'APPROVE': 'Approve', 'EXPORT': 'Export', 'DOWNLOAD': 'Download',
+    'GENERATE': 'Generate', 'SUBMIT': 'Submit', 'RUN': 'Run',
+    'ENTER': 'Enter', 'CALCULATE': 'Calculate', 'PANEL': 'Panel',
+    'SETTINGS': 'Settings', 'USERS': 'Users', 'MASTERS': 'Masters',
+}
+
+
+def _organize_perms_by_page(all_perms, assigned_ids):
+    """Organize permissions by category, splitting CRUD and special ops."""
+    pages = {}
+    for p in all_perms:
+        cat = p.get('category', 'OTHER')
+        parts = p.get('code', '').split('.', 1)
+        op = parts[1] if len(parts) > 1 else parts[0]
+
+        if cat not in pages:
+            pages[cat] = {
+                'category': cat,
+                'name': cat.replace('_', ' ').title(),
+                'crud': [],
+                'special': [],
+            }
+
+        perm_entry = {
+            'id': p['id'],
+            'code': p.get('code', ''),
+            'name': p.get('name', ''),
+            'op': op,
+            'display_name': _SPECIAL_OP_LABELS.get(op, op.replace('_', ' ').title()),
+            'assigned': p['id'] in assigned_ids,
+        }
+        if op in _CRUD_OPS:
+            pages[cat]['crud'].append(perm_entry)
+        else:
+            pages[cat]['special'].append(perm_entry)
+
+    return sorted(pages.values(), key=lambda x: x['name'])

@@ -11,7 +11,7 @@ import bcrypt
 
 from auth.ldap_auth import ldap_authenticate
 from repos.user_repo import (
-    authenticate_db,
+    find_user_credentials,
     find_user_by_email,
     get_isp_status,
     upsert_isp_status,
@@ -72,7 +72,7 @@ def login(username: str, password: str, client_ip: str = "") -> AuthResult:
             )
 
     # ── 3. DB fallback ─────────────────────────────────────────────
-    db_user = authenticate_db(username, "")
+    db_user = find_user_credentials(username)
     if db_user:
         stored_hash = db_user.get("CredPassword", "")
         # Support both legacy MD5 and modern bcrypt hashes

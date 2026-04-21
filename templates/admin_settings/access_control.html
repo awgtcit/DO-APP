@@ -1,0 +1,89 @@
+{% extends base_template|default("base.html") %}
+{% block title %}Access Control — Admin{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close" onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:1400px;margin:0 auto;padding:var(--sp-6);">
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-6);">
+    <div>
+      <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-1);">
+        <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;font-size:var(--text-sm);">Admin</a>
+        <span style="color:var(--slate-300);">/</span>
+        <span style="color:var(--slate-600);font-size:var(--text-sm);">Access Control</span>
+      </div>
+      <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);">Access Control</h1>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);margin-top:var(--sp-1);">Manage users, roles and permissions for this application via Auth Platform.</p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.ac_refresh_session') }}">
+      <button type="submit" class="btn btn--secondary btn--sm" title="Re-fetch your permissions from Auth Platform">
+        &#8635; Refresh My Permissions
+      </button>
+    </form>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--slate-200);margin-bottom:var(--sp-6);">
+    <a href="{{ url_for('admin.access_control', tab='users') }}"
+       class="ac-tab {% if tab == 'users' %}ac-tab--active{% endif %}">
+      &#128101; Users
+    </a>
+    <a href="{{ url_for('admin.access_control', tab='roles') }}"
+       class="ac-tab {% if tab == 'roles' %}ac-tab--active{% endif %}">
+      &#128179; Roles
+    </a>
+    <a href="{{ url_for('admin.access_control', tab='matrix') }}"
+       class="ac-tab {% if tab == 'matrix' %}ac-tab--active{% endif %}">
+      &#9783; Permission Matrix
+    </a>
+  </div>
+
+  <!-- Tab Content -->
+  {% if tab == 'users' %}
+  {% include "admin_settings/_ac_users_tab.html" %}
+  {% elif tab == 'roles' %}
+  {% include "admin_settings/_ac_roles_tab.html" %}
+  {% elif tab == 'matrix' %}
+  {% include "admin_settings/_ac_matrix_tab.html" %}
+  {% endif %}
+</div>
+
+<style>
+  .ac-tab {
+    padding: var(--sp-3) var(--sp-5);
+    font-size: var(--text-sm);
+    font-weight: var(--font-medium);
+    color: var(--slate-500);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color .15s, border-color .15s;
+  }
+  .ac-tab:hover { color: var(--slate-700); }
+  .ac-tab--active {
+    color: var(--brand-600);
+    border-bottom-color: var(--brand-600);
+    font-weight: var(--font-semibold);
+  }
+  .btn { display:inline-flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-4);border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:var(--font-medium);border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .15s; }
+  .btn--primary { background:var(--brand-600);color:var(--white);border-color:var(--brand-600); }
+  .btn--primary:hover { background:var(--brand-700); }
+  .btn--secondary { background:var(--white);color:var(--slate-700);border-color:var(--slate-300); }
+  .btn--secondary:hover { background:var(--slate-50);border-color:var(--slate-400); }
+  .btn--sm { padding:var(--sp-1) var(--sp-3);font-size:var(--text-xs); }
+  .btn--danger { background:var(--red-600);color:var(--white);border-color:var(--red-600); }
+  .btn--danger:hover { background:var(--red-700); }
+  .badge { display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:var(--font-medium); }
+  .badge--success { background:var(--green-50);color:var(--green-700); }
+  .badge--secondary { background:var(--slate-100);color:var(--slate-600); }
+  .badge--primary { background:var(--brand-50);color:var(--brand-700); }
+  .badge--warning { background:var(--amber-50);color:var(--amber-700); }
+  .badge--danger { background:var(--red-50);color:var(--red-700); }
+</style>
+<script>setTimeout(()=>document.querySelectorAll('.toast').forEach(t=>t.remove()),5000);</script>
+{% endblock %}

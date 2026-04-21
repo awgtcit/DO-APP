@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awaiting Confirmation – Intranet Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #006633;
+            --secondary: #00894d;
+            --dark: #003d1f;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 50%, var(--secondary) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .pending-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+            padding: 2.5rem;
+            max-width: 440px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .pending-card h1 {
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: .5rem;
+        }
+
+        .challenge-code {
+            display: inline-block;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: .4em;
+            color: var(--primary);
+            background: #e8f5e9;
+            border: 2px dashed var(--secondary);
+            border-radius: 12px;
+            padding: .5rem 1.5rem;
+            margin: 1.25rem 0;
+        }
+
+        .sso-number {
+            display: inline-block;
+            font-size: 4rem;
+            font-weight: 800;
+            color: #fff;
+            background: linear-gradient(135deg, var(--dark), var(--primary));
+            border-radius: 16px;
+            padding: .75rem 2rem;
+            margin: 1.25rem 0;
+            box-shadow: 0 8px 24px rgba(0, 102, 51, .3);
+        }
+
+        .status-text {
+            color: #555;
+            margin-bottom: 1.25rem;
+        }
+
+        .spinner-pulse {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.2s ease-in-out infinite;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: .4; }
+        }
+
+        .result-icon {
+            font-size: 3rem;
+            margin-bottom: .75rem;
+        }
+
+        .btn-back {
+            border: 1.5px solid var(--primary);
+            color: var(--primary);
+            border-radius: 8px;
+            padding: .5rem 1.5rem;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 1rem;
+            transition: all .2s;
+        }
+
+        .btn-back:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="pending-card" id="pendingCard">
+        <h1><i class="bi bi-phone"></i> Number Verification</h1>
+        <p class="status-text">Open your mobile app and tap the matching number</p>
+
+        {% if challenge_code %}
+        <div class="sso-number" id="codeDisplay">{{ challenge_code }}</div>
+        <p style="color:#888;font-size:.85rem;">Select this number on your mobile device</p>
+        {% endif %}
+
+        <div id="statusArea">
+            <p><span class="spinner-pulse"></span> Waiting for confirmation&hellip;</p>
+        </div>
+
+        <a href="{{ url_for('auth.login') }}" class="btn-back" id="backBtn">Cancel</a>
+    </div>
+
+    <script>
+        (function () {
+            var challengeId = '{{ challenge_id }}';
+            var pollToken = '{{ poll_token }}';
+            var isSso = {{ 'true' if sso else 'false' }};
+            var pollInterval = null;
+            var pollCount = 0;
+            var maxPolls = 60; // 2 minutes at 2s intervals
+
+            function pollStatus() {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    clearInterval(pollInterval);
+                    showResult('EXPIRED');
+                    return;
+                }
+
+                var url = '{{ url_for("auth.poll_challenge", challenge_id="__CID__") }}'.replace('__CID__', encodeURIComponent(challengeId))
+                    + '?poll_token=' + encodeURIComponent(pollToken);
+                if (isSso) url += '&sso=1';
+
+                fetch(url)
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.status === 'APPROVED') {
+                            clearInterval(pollInterval);
+                            showResult('APPROVED');
+                            if (data.redirect) {
+                                setTimeout(function () { window.location.href = data.redirect; }, 1000);
+                            }
+                        } else if (data.status === 'REJECTED') {
+                            clearInterval(pollInterval);
+                            showResult('REJECTED');
+                        } else if (data.status === 'EXPIRED') {
+                            clearInterval(pollInterval);
+                            showResult('EXPIRED');
+                        }
+                    })
+                    .catch(function () {
+                        // Silently retry on network error
+                    });
+            }
+
+            function showResult(status) {
+                var area = document.getElementById('statusArea');
+                var code = document.getElementById('codeDisplay');
+                if (code) code.style.display = 'none';
+
+                if (status === 'APPROVED') {
+                    area.innerHTML = '<div class="result-icon text-success"><i class="bi bi-check-circle-fill"></i></div>'
+                        + '<p style="color:#006633;font-weight:600;">Login Approved!</p>'
+                        + '<p style="color:#555;font-size:.9rem;">Redirecting to dashboard&hellip;</p>';
+                } else if (status === 'REJECTED') {
+                    area.innerHTML = '<div class="result-icon text-danger"><i class="bi bi-x-circle-fill"></i></div>'
+                        + '<p style="color:#dc3545;font-weight:600;">Login Rejected</p>'
+                        + '<p style="color:#555;font-size:.9rem;">This login attempt was denied.</p>';
+                } else {
+                    area.innerHTML = '<div class="result-icon text-warning"><i class="bi bi-clock-fill"></i></div>'
+                        + '<p style="color:#856404;font-weight:600;">Challenge Expired</p>'
+                        + '<p style="color:#555;font-size:.9rem;">Please try logging in again.</p>';
+                }
+            }
+
+            // Start polling every 2 seconds
+            pollInterval = setInterval(pollStatus, 2000);
+            // Initial poll immediately
+            pollStatus();
+        })();
+    </script>
+</body>
+
+</html>

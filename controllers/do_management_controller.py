@@ -227,6 +227,8 @@ def customer_create():
             "country_iso":       request.form.get("country_iso", "").strip(),
             "region":            request.form.get("region", "").strip(),
             "contact_number":    request.form.get("contact_number", "").strip(),
+            "ownership_sole_prop":        request.form.get("ownership_sole_prop", "No"),
+            "ownership_sole_prop_detail": request.form.get("ownership_sole_prop_detail", "").strip(),
             "created_by":        session.get("emp_id"),
         }
 
@@ -302,6 +304,8 @@ def customer_edit(pk):
             "country_iso":       request.form.get("country_iso", "").strip(),
             "region":            request.form.get("region", "").strip(),
             "contact_number":    request.form.get("contact_number", "").strip(),
+            "ownership_sole_prop":        request.form.get("ownership_sole_prop", "No"),
+            "ownership_sole_prop_detail": request.form.get("ownership_sole_prop_detail", "").strip(),
             "modified_by":       session.get("emp_id"),
         }
 
@@ -353,6 +357,8 @@ def customer_edit(pk):
         "country_iso":       customer.get("Country_ISO_Code", ""),
         "region":            customer.get("Region", ""),
         "contact_number":    customer.get("Contact_Number", ""),
+        "ownership_sole_prop":        customer.get("Ownership_Sole_Proprietorship", "No") or "No",
+        "ownership_sole_prop_detail": customer.get("Ownership_Sole_Prop_Detail", ""),
     }
     customers_list = get_all_customers()
     return render_template(

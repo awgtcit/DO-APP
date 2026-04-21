@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}{{ 'Edit' if editing else 'Add New' }} Customer Details{% endblock %}
 
 {% block head %}
@@ -659,6 +659,16 @@
                placeholder="e.g. +97142224998">
         <div class="fg__error-msg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span></span></div>
       </div>
+
+      <!-- Ownership Sole Proprietorship -->
+      <div class="fg__item">
+        <label class="fg__label" for="ownership_sole_prop">Ownership Sole Proprietorship</label>
+        <select id="ownership_sole_prop" name="ownership_sole_prop">
+          <option value="No" {{ 'selected' if form.ownership_sole_prop|default('No') == 'No' }}>No</option>
+          <option value="Yes" {{ 'selected' if form.ownership_sole_prop|default('No') == 'Yes' }}>Yes</option>
+           <option value="N/A" {{ 'selected' if form.ownership_sole_prop|default('No') == 'N/A' }}>N/A</option>
+        </select>
+      </div>
     </div>
 
     <div class="form-bar">
@@ -810,6 +820,7 @@ $(document).ready(function () {
   $.each(fieldsToCheck, function(_, sel) {
     $(sel).on('input blur', function(){ validateField(this); });
   });
+
 
   // Country dropdown validation on change
   $('#countrySelect').on('change', function() { validateCountryDropdown(); });

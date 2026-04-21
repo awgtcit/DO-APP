@@ -14,7 +14,7 @@
       timer = setTimeout(() => {
         const val = input.value.trim();
         if (!val) { warn.style.display = 'none'; input.style.borderColor = ''; return; }
-        fetch('{{ url_for("admin_settings.api_check_words") }}', {
+        fetch('{{ url_for("admin.api_check_words") }}', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({text: val})

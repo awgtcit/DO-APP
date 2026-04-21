@@ -1,0 +1,354 @@
+{% extends base_template|default("base.html") %}
+{% block title %}Database Connection — Admin{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:var(--sp-6);">
+
+  <!-- Breadcrumb -->
+  <div style="margin-bottom:var(--sp-4);">
+    <a href="{{ url_for('admin.index') }}" style="color:var(--brand-600);text-decoration:none;font-size:var(--text-sm);">
+      &larr; Admin
+    </a>
+  </div>
+
+  <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);margin-bottom:var(--sp-2);">
+    Database Connection
+  </h1>
+  <p style="color:var(--slate-500);margin-bottom:var(--sp-8);">
+    Change the SQL Server connection. You can migrate existing data before switching.
+  </p>
+
+  <!-- Current Connection Card -->
+  <div class="card" style="padding:var(--sp-6);margin-bottom:var(--sp-6);border:1px solid var(--slate-200);border-radius:var(--radius-lg);">
+    <h2 style="font-size:var(--text-base);font-weight:var(--font-semibold);color:var(--slate-700);margin-bottom:var(--sp-4);">
+      Current Connection
+    </h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp-4);">
+      <div>
+        <div style="font-size:var(--text-xs);color:var(--slate-500);margin-bottom:var(--sp-1);">SERVER</div>
+        <div style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-800);word-break:break-all;">{{ current.server or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:var(--text-xs);color:var(--slate-500);margin-bottom:var(--sp-1);">DATABASE</div>
+        <div style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-800);">{{ current.database or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:var(--text-xs);color:var(--slate-500);margin-bottom:var(--sp-1);">USER</div>
+        <div style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-800);">{{ current.user or '—' }}</div>
+      </div>
+      <div>
+        <div style="font-size:var(--text-xs);color:var(--slate-500);margin-bottom:var(--sp-1);">DRIVER</div>
+        <div style="font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-800);">{{ current.driver or '—' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Connection Form -->
+  <div class="card" style="padding:var(--sp-6);border:1px solid var(--slate-200);border-radius:var(--radius-lg);">
+    <h2 style="font-size:var(--text-base);font-weight:var(--font-semibold);color:var(--slate-700);margin-bottom:var(--sp-5);">
+      New Connection
+    </h2>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4);margin-bottom:var(--sp-4);">
+      <div>
+        <label class="form-label">Server / Host</label>
+        <input id="db_server" type="text" class="form-control" placeholder="e.g. 192.168.1.10\SQLEXPRESS"
+               value="{{ current.server }}">
+      </div>
+      <div>
+        <label class="form-label">Database Name</label>
+        <input id="db_name" type="text" class="form-control" placeholder="e.g. IntraDB"
+               value="{{ current.database }}">
+      </div>
+      <div>
+        <label class="form-label">Username</label>
+        <input id="db_user" type="text" class="form-control" placeholder="SQL login username"
+               value="{{ current.user }}">
+      </div>
+      <div>
+        <label class="form-label">Password</label>
+        <input id="db_password" type="password" class="form-control" placeholder="SQL login password">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label class="form-label">ODBC Driver <span style="color:var(--slate-400);font-weight:normal;">(optional)</span></label>
+        <input id="db_driver" type="text" class="form-control"
+               placeholder="{ODBC Driver 17 for SQL Server}"
+               value="{{ current.driver }}">
+      </div>
+    </div>
+
+    <!-- Test Connection -->
+    <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-5);">
+      <button id="btnTest" type="button" class="btn btn-secondary btn-sm" onclick="doTest()">
+        Test Connection
+      </button>
+      <span id="testResult" style="font-size:var(--text-sm);"></span>
+    </div>
+
+    <!-- Switch Database button (enabled after successful test) -->
+    <div>
+      <button id="btnSwitch" type="button" class="btn btn-primary btn-sm" disabled onclick="openSwitchModal()">
+        Switch Database
+      </button>
+      <span style="font-size:var(--text-xs);color:var(--slate-400);margin-left:var(--sp-3);">
+        Test connection first to enable this button.
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Switch Modal ─────────────────────────────────────────── -->
+<div id="switchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:var(--sp-6);width:90%;max-width:540px;box-shadow:var(--shadow-xl);">
+    <h3 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-2);">
+      Switch Database Connection
+    </h3>
+    <p style="color:var(--slate-600);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
+      Do you want to migrate the existing data from the current database to the new one before switching?
+    </p>
+
+    <!-- Table selection -->
+    <details style="margin-bottom:var(--sp-4);">
+      <summary style="cursor:pointer;font-size:var(--text-sm);color:var(--brand-600);font-weight:var(--font-medium);">
+        Select tables to migrate ({{ all_tables|length }} available)
+      </summary>
+      <div style="margin-top:var(--sp-3);max-height:200px;overflow-y:auto;border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:var(--sp-3);">
+        <label style="display:flex;align-items:center;gap:var(--sp-2);font-size:var(--text-xs);color:var(--slate-500);margin-bottom:var(--sp-2);cursor:pointer;">
+          <input type="checkbox" id="chkSelectAll" checked onchange="toggleAll(this)"> Select / deselect all
+        </label>
+        {% for t in all_tables %}
+        <label style="display:flex;align-items:center;gap:var(--sp-2);font-size:var(--text-sm);cursor:pointer;padding:2px 0;">
+          <input type="checkbox" class="tbl-chk" value="{{ t }}" checked> {{ t }}
+        </label>
+        {% endfor %}
+      </div>
+    </details>
+
+    <!-- Data copy mode -->
+    <div style="margin-bottom:var(--sp-5);">
+      <label class="form-label" for="copyMode">Data Copy Mode</label>
+      <select id="copyMode" class="form-control">
+        <option value="masters_only" selected>Master tables only (recommended)</option>
+        <option value="all">All selected tables</option>
+        <option value="none">Schema only (no data)</option>
+      </select>
+      <div style="font-size:var(--text-xs);color:var(--slate-500);margin-top:var(--sp-1);">
+        Use "Master tables only" to copy seed/reference data while keeping transaction tables schema-only.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:var(--sp-3);justify-content:flex-end;">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeSwitchModal()">Cancel</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="doConnectOnly()">Switch Without Migration</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="doMigrateAndConnect()">Migrate &amp; Switch</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Results Modal ────────────────────────────────────────── -->
+<div id="resultsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9001;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:var(--radius-lg);padding:var(--sp-6);width:92%;max-width:680px;box-shadow:var(--shadow-xl);max-height:90vh;display:flex;flex-direction:column;">
+    <h3 id="resultsTitle" style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">
+      Migration Results
+    </h3>
+    <div id="resultsBody" style="overflow-y:auto;flex:1;"></div>
+    <div style="margin-top:var(--sp-4);text-align:right;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="closeResultsModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9500;align-items:center;justify-content:center;flex-direction:column;gap:var(--sp-4);">
+  <div style="width:48px;height:48px;border:4px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;"></div>
+  <div id="loadingMsg" style="color:#fff;font-size:var(--text-base);font-weight:var(--font-medium);">Processing…</div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.form-label { display:block;font-size:var(--text-sm);font-weight:var(--font-medium);color:var(--slate-700);margin-bottom:var(--sp-1); }
+.form-control { width:100%;padding:var(--sp-2) var(--sp-3);border:1px solid var(--slate-300);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--slate-800);box-sizing:border-box; }
+.form-control:focus { outline:none;border-color:var(--brand-400);box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+</style>
+
+<script>
+var _testedCfg = null;
+
+function getCfg() {
+  return {
+    server:   document.getElementById('db_server').value.trim(),
+    database: document.getElementById('db_name').value.trim(),
+    user:     document.getElementById('db_user').value.trim(),
+    password: document.getElementById('db_password').value,
+    driver:   document.getElementById('db_driver').value.trim(),
+  };
+}
+
+function doTest() {
+  var cfg = getCfg();
+  var btn = document.getElementById('btnTest');
+  var res = document.getElementById('testResult');
+  if (!cfg.server || !cfg.database || !cfg.user) {
+    res.textContent = 'Fill in server, database and user.';
+    res.style.color = 'var(--red-600)';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Testing…';
+  res.textContent = '';
+  document.getElementById('btnSwitch').disabled = true;
+  _testedCfg = null;
+
+  fetch('{{ url_for("admin.database_test") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(cfg),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      res.innerHTML = '&#10003; Connected to <strong>' + data.db_name + '</strong> on <strong>' + data.server_name + '</strong>';
+      if (data.db_created) {
+        res.innerHTML += ' &mdash; database was created automatically.';
+      }
+      res.style.color = 'var(--green-700)';
+      _testedCfg = cfg;
+      document.getElementById('btnSwitch').disabled = false;
+    } else {
+      res.textContent = 'Failed: ' + data.error;
+      res.style.color = 'var(--red-600)';
+    }
+  })
+  .catch(e => {
+    res.textContent = 'Request error: ' + e.message;
+    res.style.color = 'var(--red-600)';
+  })
+  .finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'Test Connection';
+  });
+}
+
+function openSwitchModal() {
+  document.getElementById('switchModal').style.display = 'flex';
+}
+function closeSwitchModal() {
+  document.getElementById('switchModal').style.display = 'none';
+}
+function closeResultsModal() {
+  document.getElementById('resultsModal').style.display = 'none';
+  window.location.reload();
+}
+
+function toggleAll(chk) {
+  document.querySelectorAll('.tbl-chk').forEach(c => c.checked = chk.checked);
+}
+
+function getSelectedTables() {
+  return Array.from(document.querySelectorAll('.tbl-chk:checked')).map(c => c.value);
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingMsg').textContent = msg || 'Processing…';
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function showResults(title, results) {
+  document.getElementById('resultsTitle').textContent = title;
+  var statusColor = { ok: 'var(--green-700)', error: 'var(--red-600)', skipped: 'var(--slate-400)' };
+  var statusIcon  = { ok: '✓', error: '✗', skipped: '—' };
+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:var(--text-sm);">' +
+    '<thead><tr style="background:var(--slate-50);">' +
+    '<th style="text-align:left;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-200);">Table</th>' +
+    '<th style="text-align:center;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-200);">Status</th>' +
+    '<th style="text-align:right;padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-200);">Rows</th>' +
+    '<th style="padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-200);">Note</th>' +
+    '</tr></thead><tbody>';
+
+  results.forEach(function(r) {
+    var color = statusColor[r.status] || 'var(--slate-600)';
+    var icon  = statusIcon[r.status]  || r.status;
+    html += '<tr>' +
+      '<td style="padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-100);font-family:monospace;font-size:var(--text-xs);">' + r.table + '</td>' +
+      '<td style="padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-100);text-align:center;color:' + color + ';font-weight:var(--font-semibold);">' + icon + '</td>' +
+      '<td style="padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-100);text-align:right;color:var(--slate-600);">' + (r.rows_copied || 0) + '</td>' +
+      '<td style="padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--slate-100);color:var(--slate-500);font-size:var(--text-xs);">' + (r.message || '') + '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('resultsBody').innerHTML = html;
+  document.getElementById('resultsModal').style.display = 'flex';
+}
+
+function doMigrateAndConnect() {
+  if (!_testedCfg) return;
+  var tables = getSelectedTables();
+  if (!tables.length) { alert('Select at least one table.'); return; }
+  closeSwitchModal();
+  showLoading('Migrating data and switching connection…');
+
+  var payload = Object.assign({}, _testedCfg, {
+    tables: tables,
+    include_data: document.getElementById('copyMode').value !== 'none',
+    copy_mode: document.getElementById('copyMode').value,
+  });
+
+  fetch('{{ url_for("admin.database_migrate_and_connect") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideLoading();
+    if (data.ok) {
+      showResults('Migration Results', data.results || []);
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(e => {
+    hideLoading();
+    alert('Request error: ' + e.message);
+  });
+}
+
+function doConnectOnly() {
+  if (!_testedCfg) return;
+  closeSwitchModal();
+  showLoading('Switching connection…');
+
+  fetch('{{ url_for("admin.database_connect_only") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(_testedCfg),
+  })
+  .then(r => r.json())
+  .then(data => {
+    hideLoading();
+    if (data.ok) {
+      var msg = 'Connection switched to ' + _testedCfg.database + ' on ' + _testedCfg.server;
+      if (data.db_created) {
+        msg += ' (database was created automatically)';
+      }
+      showResults('Connection Switched', [{
+        table: 'All tables', status: 'ok', rows_copied: 0,
+        message: msg
+      }]);
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(e => {
+    hideLoading();
+    alert('Request error: ' + e.message);
+  });
+}
+</script>
+{% endblock %}

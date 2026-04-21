@@ -4,19 +4,178 @@ Controller → Service → Repo
 """
 
 import re
+import time
 
 from repos import admin_settings_repo as repo
 
 
 # ═══════════════════════════════════════════════════════════════
-#  USER MANAGEMENT
+#  AUTH-SOURCED USERS (cached, replaces local user list)
+# ═══════════════════════════════════════════════════════════════
+
+_auth_users_cache: dict = {'data': None, 'ts': 0}
+_AUTH_USERS_TTL = 60  # seconds
+
+
+def _normalize_emp_id(value) -> str | None:
+    """Normalize Auth/local employee IDs to a comparable string form."""
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _normalize_email(value) -> str:
+    return (value or "").strip().lower()
+
+
+def _build_local_user_index(local_users: list[dict]) -> dict[str, dict]:
+    by_email: dict[str, dict] = {}
+    for user in local_users:
+        email = _normalize_email(user.get("EmailAddress") or user.get("CredEmail"))
+        if email and email not in by_email:
+            by_email[email] = user
+    return by_email
+
+
+def clear_auth_users_cache() -> None:
+    _auth_users_cache['data'] = None
+    _auth_users_cache['ts'] = 0
+
+
+def _auth_user_identifiers(auth_user: dict) -> set[str]:
+    identifiers = {
+        _normalize_emp_id(auth_user.get('emp_id')),
+        _normalize_emp_id(auth_user.get('local_emp_id')),
+        _normalize_emp_id(auth_user.get('auth_emp_id')),
+    }
+    return {identifier for identifier in identifiers if identifier}
+
+
+def find_auth_user(app_id: str, user_id: int | str) -> dict | None:
+    """Find an Auth user by local or Auth-side identifier."""
+    target_id = _normalize_emp_id(user_id)
+    if not target_id:
+        return None
+
+    for auth_user in get_auth_users(app_id):
+        if target_id in _auth_user_identifiers(auth_user):
+            return dict(auth_user)
+    return None
+
+
+def resolve_or_create_local_emp_id_from_auth_user(auth_user: dict,
+                                                  create_if_missing: bool = False) -> int | None:
+    """Resolve an Auth payload to the local numeric EmpID used by admin tables."""
+    email = _normalize_email(auth_user.get('email'))
+    if email:
+        local_user = repo.get_user_by_email(email)
+        if local_user and local_user.get('EmpID') is not None:
+            return int(local_user['EmpID'])
+
+    local_emp_id = _normalize_emp_id(auth_user.get('local_emp_id'))
+    if local_emp_id and local_emp_id.isdigit():
+        return int(local_emp_id)
+
+    if not create_if_missing or not email:
+        return None
+
+    created_emp_id = repo.ensure_auth_shadow_user(
+        first_name=auth_user.get('first_name', ''),
+        last_name=auth_user.get('last_name', ''),
+        email=auth_user.get('email', ''),
+        group_id=int(auth_user.get('group_id') or 10),
+    )
+    clear_auth_users_cache()
+    return created_emp_id
+
+
+def resolve_or_create_local_emp_id(app_id: str, user_id: int | str,
+                                   create_if_missing: bool = False) -> int | None:
+    """Resolve a posted user identifier to the local numeric EmpID."""
+    normalized_id = _normalize_emp_id(user_id)
+    if normalized_id and normalized_id.isdigit():
+        return int(normalized_id)
+
+    auth_user = find_auth_user(app_id, user_id)
+    if not auth_user:
+        return None
+    return resolve_or_create_local_emp_id_from_auth_user(
+        auth_user,
+        create_if_missing=create_if_missing,
+    )
+
+
+def get_auth_users(app_id: str) -> list[dict]:
+    """Return Auth Platform users mapped to {emp_id, first_name, last_name, email}.
+    Cached for 60 s to avoid hitting the API on every page load."""
+    now = time.time()
+    if _auth_users_cache['data'] is not None and now - _auth_users_cache['ts'] < _AUTH_USERS_TTL:
+        return _auth_users_cache['data']
+
+    from sdk import auth_client
+    raw, _ = auth_client.get_app_users(app_id, page=1, per_page=500)
+    local_by_email = _build_local_user_index(repo.get_all_users_full())
+    users = []
+    for au in (raw or []):
+        auth_emp_id = _normalize_emp_id(
+            au.get('employee_id') or au.get('employee_code') or au.get('emp_id')
+        )
+        email = au.get('email', '')
+        local_user = local_by_email.get(_normalize_email(email))
+        local_emp_id = _normalize_emp_id(local_user.get('EmpID')) if local_user else None
+        users.append({
+            'emp_id': local_emp_id or auth_emp_id or None,
+            'local_emp_id': local_emp_id,
+            'auth_emp_id': auth_emp_id,
+            'first_name': au.get('first_name', ''),
+            'last_name': au.get('last_name', ''),
+            'email': email,
+            'group_id': au.get('group_id'),
+        })
+    _auth_users_cache['data'] = users
+    _auth_users_cache['ts'] = now
+    return users
+
+
+def enrich_module_role_users(all_users: list[dict], user_role_assignments: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Normalize user IDs and enrich role assignments with Auth user info."""
+    normalized_users: list[dict] = []
+    for auth_user in all_users:
+        item = dict(auth_user)
+        item['emp_id'] = _normalize_emp_id(item.get('emp_id'))
+        item['local_emp_id'] = _normalize_emp_id(item.get('local_emp_id'))
+        item['auth_emp_id'] = _normalize_emp_id(item.get('auth_emp_id'))
+        normalized_users.append(item)
+
+    auth_by_emp: dict[str, dict] = {}
+    for auth_user in normalized_users:
+        for identifier in _auth_user_identifiers(auth_user):
+            auth_by_emp[identifier] = auth_user
+
+    normalized_assignments: list[dict] = []
+    for assignment in user_role_assignments:
+        item = dict(assignment)
+        item['emp_id'] = _normalize_emp_id(item.get('emp_id'))
+        if not item.get('user_name'):
+            auth_user = auth_by_emp.get(item.get('emp_id'), {})
+            fallback_name = f"Emp #{item['emp_id']}" if item.get('emp_id') else 'Unknown User'
+            item['user_name'] = f"{auth_user.get('first_name', '')} {auth_user.get('last_name', '')}".strip() or fallback_name
+            item['user_email'] = auth_user.get('email', '')
+        normalized_assignments.append(item)
+
+    return normalized_users, normalized_assignments
+
+
+# ═══════════════════════════════════════════════════════════════
+#  USER MANAGEMENT (legacy, kept for internal repo lookups)
 # ═══════════════════════════════════════════════════════════════
 
 def list_users() -> list[dict]:
     return repo.get_all_users_full()
 
 
-def get_user(emp_id: int) -> dict | None:
+def get_user(emp_id: int | str) -> dict | None:
     return repo.get_user_by_empid(emp_id)
 
 
@@ -33,7 +192,7 @@ def create_user(data: dict) -> int:
     )
 
 
-def update_user(emp_id: int, data: dict) -> None:
+def update_user(emp_id: int | str, data: dict) -> None:
     repo.update_user(
         emp_id=emp_id,
         first_name=data["first_name"],
@@ -50,7 +209,7 @@ def reset_password(emp_id: int, new_password: str) -> None:
     repo.reset_password(emp_id, new_password)
 
 
-def delete_user(emp_id: int) -> None:
+def delete_user(emp_id: int | str) -> None:
     repo.delete_user(emp_id)
 
 
@@ -145,7 +304,7 @@ def save_module_group_access(module_id: int, group_settings: list[dict]) -> None
     repo.set_module_group_access(module_id, group_settings)
 
 
-def set_module_user_access(module_id: int, emp_id: int, is_enabled: bool) -> None:
+def set_module_user_access(module_id: int, emp_id: int | str, is_enabled: bool) -> None:
     repo.set_module_user_access(module_id, emp_id, is_enabled)
 
 
@@ -162,14 +321,15 @@ def get_visible_modules(emp_id: int, user_group_ids: list[int]) -> list[dict]:
 # Each entry: {role_key: display_label}.
 MODULE_ROLES = {
     "delivery_orders": {
-        "do_creator":       "Creator",
-        "do_finance":       "Finance",
-        "do_logistics":     "Logistics",
-        "do_approver":      "Approver",
-        "do_mgmt_products":  "Manage Products",
-        "do_mgmt_customers": "Manage Customers",
-        "do_mgmt_grms":      "Manage GRMS",
-        "do_mgmt_reports":   "Manage Reports",
+        "do_creator":         "Creator",
+        "do_finance":         "Finance",
+        "do_logistics":       "Logistics",
+        "do_approver":        "Approver",
+        "do_customer_manager": "Customer Manager",
+        "do_mgmt_products":   "Manage Products",
+        "do_mgmt_customers":  "Manage Customers",
+        "do_mgmt_grms":       "Manage GRMS",
+        "do_mgmt_reports":    "Manage Reports",
     },
     "dms": {
         "dms_uploader":  "Uploader",
@@ -214,29 +374,29 @@ def get_user_module_roles(module_id: int) -> list[dict]:
     return repo.get_user_module_roles(module_id)
 
 
-def get_user_roles_for_module(emp_id: int, module_id: int) -> list[str]:
+def get_user_roles_for_module(emp_id: int | str, module_id: int) -> list[str]:
     """Get role keys for a user in a specific module."""
     return repo.get_user_roles_for_module(emp_id, module_id)
 
 
-def get_all_module_roles_for_user(emp_id: int) -> dict[str, list[str]]:
+def get_all_module_roles_for_user(emp_id: int | str) -> dict[str, list[str]]:
     """Get all module roles for a user. Returns {module_key: [role_keys]}."""
     return repo.get_all_module_roles_for_user(emp_id)
 
 
-def assign_user_module_role(module_id: int, emp_id: int,
+def assign_user_module_role(module_id: int, emp_id: int | str,
                             role_key: str, assigned_by: int) -> None:
     """Assign a role to a user for a module."""
     repo.assign_user_module_role(module_id, emp_id, role_key, assigned_by)
 
 
-def revoke_user_module_role(module_id: int, emp_id: int,
+def revoke_user_module_role(module_id: int, emp_id: int | str,
                             role_key: str) -> None:
     """Remove a role from a user for a module."""
     repo.revoke_user_module_role(module_id, emp_id, role_key)
 
 
-def set_user_module_roles(module_id: int, emp_id: int,
+def set_user_module_roles(module_id: int, emp_id: int | str,
                           role_keys: list[str], assigned_by: int) -> None:
     """Replace all roles for a user in a module."""
     repo.set_user_module_roles(module_id, emp_id, role_keys, assigned_by)
@@ -305,6 +465,21 @@ def get_status_flow(module_key: str) -> dict[str, list[str]]:
     """Get STATUS_FLOW dict from DB with fallback to hardcoded."""
     flow = repo.get_workflow_flow_dict(module_key)
     if flow:
+        if module_key == "delivery_orders":
+            normalized = {k: list(v) for k, v in flow.items()}
+
+            # Keep customer-manager approval path available even if older DB config
+            # does not include it yet.
+            draft_targets = normalized.setdefault("DRAFT", [])
+            if "PENDING CUSTOMER APPROVAL" not in draft_targets:
+                draft_targets.append("PENDING CUSTOMER APPROVAL")
+
+            pending_targets = normalized.setdefault("PENDING CUSTOMER APPROVAL", [])
+            for target in ("SUBMITTED", "REJECTED", "DRAFT"):
+                if target not in pending_targets:
+                    pending_targets.append(target)
+
+            return normalized
         return flow
     # Fallback to hardcoded defaults
     return _HARDCODED_FLOWS.get(module_key, {})
@@ -312,7 +487,8 @@ def get_status_flow(module_key: str) -> dict[str, list[str]]:
 
 _HARDCODED_FLOWS = {
     "delivery_orders": {
-        "DRAFT":           ["SUBMITTED", "CANCELLED"],
+        "DRAFT":           ["SUBMITTED", "PENDING CUSTOMER APPROVAL", "CANCELLED"],
+        "PENDING CUSTOMER APPROVAL": ["SUBMITTED", "REJECTED", "DRAFT"],
         "SUBMITTED":       ["PRICE AGREED", "NEED ATTACHMENT", "REJECTED"],
         "PRICE AGREED":    ["CONFIRMED", "CANCELLED"],
         "CONFIRMED":       ["NEED ATTACHMENT", "CUSTOMS DOCUMENT UPDATED"],

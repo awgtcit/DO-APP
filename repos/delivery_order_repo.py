@@ -23,7 +23,8 @@ def get_dashboard_stats() -> dict:
             SUM(CASE WHEN Status = 'CUSTOMS DOCUMENT UPDATED' THEN 1 ELSE 0 END) AS customs_updated,
             SUM(CASE WHEN Status = 'DELIVERED'       THEN 1 ELSE 0 END) AS delivered,
             SUM(CASE WHEN Status = 'REJECTED'        THEN 1 ELSE 0 END) AS rejected,
-            SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled
+            SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled,
+            SUM(CASE WHEN Status = 'PENDING CUSTOMER APPROVAL' THEN 1 ELSE 0 END) AS pending_customer_approval
         FROM Intra_SalesOrder
     """
     with read_only() as cursor:
@@ -34,6 +35,7 @@ def get_dashboard_stats() -> dict:
                 "total", "drafts", "submitted", "need_attach",
                 "price_agreed", "confirmed", "customs_updated",
                 "delivered", "rejected", "cancelled",
+                "pending_customer_approval",
             )}
         cols = [d[0] for d in cursor.description]
         return dict(zip(cols, row))
@@ -120,9 +122,12 @@ def get_order_by_id(order_id: int) -> dict | None:
                ISNULL(t3.Name, '')    AS bill_to_name,
                ISNULL(t3.Address, '') AS bill_to_address,
                t3.SapCodeFromSAP     AS bill_to_sap,
+             ISNULL(t3.Ownership_Sole_Proprietorship, '') AS bill_to_ownership_sole_prop,
+               ISNULL(t3.Marks_Numbers, '') AS bill_to_marks_numbers,
                ISNULL(t4.Name, '')    AS ship_to_name,
                ISNULL(t4.Address, '') AS ship_to_address,
                t4.SapCodeFromSAP     AS bill_to_sap_ship,
+               ISNULL(t4.Ownership_Sole_Proprietorship, '') AS ship_to_ownership_sole_prop,
                ISNULL(t5.ExitName, '') AS point_of_exit_name,
                ISNULL(t6.FirstName, '') AS creator_first,
                ISNULL(t6.LastName, '')  AS creator_last,
@@ -187,7 +192,7 @@ def get_sales_managers() -> list[dict]:
 def get_bill_to_list() -> list[dict]:
     """Get all active Bill To / Ship To customers."""
     sql = """
-        SELECT id, SapCode, SapCodeFromSAP, Name, Address
+        SELECT id, SapCode, SapCodeFromSAP, Name, Address, Marks_Numbers, Ownership_Sole_Proprietorship
         FROM Intra_SalesOrder_BillTo
         WHERE ISNULL(Status, '1') = '1'
         ORDER BY Name
@@ -243,14 +248,15 @@ def create_order(data: dict) -> int:
         next_id = cursor.fetchone()[0]
         po_number = f"AWTFZC/{month_abbr}/{year_short}/DO{next_id}"
 
+        initial_status = data.get("initial_status", "DRAFT")
         sql = """
             INSERT INTO Intra_SalesOrder
             (PO_Date, PO_Number, Loading_Date, Delivery_Terms, Payment_Terms,
              Transportation_Mode, Bill_To_SapCode, Ship_To_SapCode,
              Ship_To_PointOfExit, Ship_To_PointOfDischarge,
              Ship_To_FinalDestination, Notify_Party, Shipping_Agent,
-             On_Behalf_Of, Status, DOCurrency, Created_by, Created_on)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?)
+             On_Behalf_Of, Marks_Numbers, Status, DOCurrency, Created_by, Created_on)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor.execute(sql, [
             data.get("po_date"),
@@ -267,6 +273,8 @@ def create_order(data: dict) -> int:
             data.get("notify_party"),
             data.get("shipping_agent"),
             data.get("on_behalf_of"),
+            data.get("marks_numbers", ""),
+            initial_status,
             data.get("currency", "USD"),
             data.get("created_by"),
             now,
@@ -288,7 +296,7 @@ def update_order(order_id: int, data: dict) -> bool:
             Bill_To_SapCode = ?, Ship_To_SapCode = ?,
             Ship_To_PointOfExit = ?, Ship_To_PointOfDischarge = ?,
             Ship_To_FinalDestination = ?, Notify_Party = ?,
-            Shipping_Agent = ?, On_Behalf_Of = ?, DOCurrency = ?,
+            Shipping_Agent = ?, On_Behalf_Of = ?, Marks_Numbers = ?, DOCurrency = ?,
             Modified_by = ?, Modified_on = ?
         WHERE id = ?
     """
@@ -307,6 +315,7 @@ def update_order(order_id: int, data: dict) -> bool:
             data.get("notify_party"),
             data.get("shipping_agent"),
             data.get("on_behalf_of"),
+            data.get("marks_numbers", ""),
             data.get("currency", "USD"),
             data.get("modified_by"),
             datetime.now(),
@@ -586,7 +595,8 @@ def get_dashboard_stats_for_user(emp_id: int) -> dict:
             SUM(CASE WHEN Status = 'CUSTOMS DOCUMENT UPDATED' THEN 1 ELSE 0 END) AS customs_updated,
             SUM(CASE WHEN Status = 'DELIVERED'       THEN 1 ELSE 0 END) AS delivered,
             SUM(CASE WHEN Status = 'REJECTED'        THEN 1 ELSE 0 END) AS rejected,
-            SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled
+            SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled,
+            SUM(CASE WHEN Status = 'PENDING CUSTOMER APPROVAL' THEN 1 ELSE 0 END) AS pending_customer_approval
         FROM Intra_SalesOrder
         WHERE Created_by = ?
     """
@@ -598,6 +608,7 @@ def get_dashboard_stats_for_user(emp_id: int) -> dict:
                 "total", "drafts", "submitted", "need_attach",
                 "price_agreed", "confirmed", "customs_updated",
                 "delivered", "rejected", "cancelled",
+                "pending_customer_approval",
             )}
         cols = [d[0] for d in cursor.description]
         return dict(zip(cols, row))
@@ -671,7 +682,8 @@ def get_orders_for_user(
 def get_customer_by_sap_code(sap_code: str) -> dict | None:
     """Get a single customer by SapCode."""
     sql = """
-        SELECT id, SapCode, SapCodeFromSAP, Name, Address
+        SELECT id, SapCode, SapCodeFromSAP, Name, Address,
+               Ownership_Sole_Proprietorship, Marks_Numbers
         FROM Intra_SalesOrder_BillTo
         WHERE CAST(SapCode AS VARCHAR(100)) = ?
     """
@@ -823,15 +835,19 @@ def create_customer(data: dict) -> int:
         sql = """
             INSERT INTO Intra_SalesOrder_BillTo
                 (SapCode, SapCodeFromSAP, Name, Address, Postal_Code,
-                 Country_ISO_Code, Region, Contact_Number, Status,
+                 Country_ISO_Code, Region, Contact_Number,
+                 Ownership_Sole_Proprietorship, Ownership_Sole_Prop_Detail,
+                 Status,
                  Created_on, Created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, '1', GETDATE(), ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '1', GETDATE(), ?)
         """
         cursor.execute(sql, [
             data["sap_code"], data.get("sap_code_from_sap", ""),
             data["name"], data.get("address", ""),
             data.get("postal_code", ""), data.get("country_iso", ""),
             data.get("region", ""), data.get("contact_number", ""),
+            data.get("ownership_sole_prop", "No"),
+            data.get("ownership_sole_prop_detail", ""),
             data.get("created_by"),
         ])
         cursor.execute("SELECT @@IDENTITY")
@@ -846,6 +862,8 @@ def update_customer(pk: int, data: dict) -> bool:
             SET SapCodeFromSAP = ?, Name = ?, Address = ?,
                 Postal_Code = ?, Country_ISO_Code = ?, Region = ?,
                 Contact_Number = ?,
+                Ownership_Sole_Proprietorship = ?,
+                Ownership_Sole_Prop_Detail = ?,
                 Modified_on = GETDATE(), Modified_by = ?
             WHERE id = ?
         """
@@ -853,7 +871,10 @@ def update_customer(pk: int, data: dict) -> bool:
             data.get("sap_code_from_sap", ""), data["name"],
             data.get("address", ""), data.get("postal_code", ""),
             data.get("country_iso", ""), data.get("region", ""),
-            data.get("contact_number", ""), data.get("modified_by"), pk,
+            data.get("contact_number", ""),
+            data.get("ownership_sole_prop", "No"),
+            data.get("ownership_sole_prop_detail", ""),
+            data.get("modified_by"), pk,
         ])
         return cursor.rowcount > 0
 

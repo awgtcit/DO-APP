@@ -43,6 +43,11 @@
       body { padding: 0; font-size: 10px; }
       .no-print { display: none !important; }
       .doc-wrapper { box-shadow: none !important; border: none !important; }
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
     }
 
     /* ── Toolbar ────────────────────────────────────────── */
@@ -258,8 +263,8 @@
       background: currentColor;
     }
 
-    .currency { 
-      font-size: 0.85em; 
+    .currency {
+      font-size: 0.85em;
       color: inherit;
       font-weight: normal;
       margin-left: 2px;
@@ -457,6 +462,13 @@
         </tr>
       </tbody>
     </table>
+
+    <!-- Marks & Numbers -->
+    <div class="notify-row" style="border-bottom: 1px solid var(--gray-200);">
+      <div class="notify-row__left" style="width:100%;">
+        <u>Marks &amp; Numbers</u>: {{ order.Marks_Numbers or 'N/A' }}
+      </div>
+    </div>
 
     <!-- Notify Party / Shipping Agent row -->
     <div class="notify-row">

@@ -53,6 +53,56 @@ def get_user_by_empid(emp_id: int) -> dict | None:
         return _row_to_dict(cursor, row) if row else None
 
 
+def get_user_by_email(email: str) -> dict | None:
+    """Look up a local user by primary or credential email."""
+    normalized_email = (email or "").strip().lower()
+    if not normalized_email:
+        return None
+
+    sql = """
+        SELECT TOP 1 u.*, uc.CredUsername, uc.CredEmail
+        FROM Intra_Users u
+        LEFT JOIN Intra_UserCredentials uc ON u.EmpID = uc.EmpID
+        WHERE LOWER(LTRIM(RTRIM(ISNULL(u.EmailAddress, '')))) = ?
+           OR LOWER(LTRIM(RTRIM(ISNULL(uc.CredEmail, '')))) = ?
+        ORDER BY u.EmpID
+    """
+    with read_only() as cursor:
+        cursor.execute(sql, (normalized_email, normalized_email))
+        row = cursor.fetchone()
+        return _row_to_dict(cursor, row) if row else None
+
+
+def ensure_auth_shadow_user(first_name: str, last_name: str, email: str,
+                            group_id: int = 10) -> int:
+    """Ensure an Auth-only user has a local numeric EmpID record."""
+    existing = get_user_by_email(email)
+    if existing:
+        return int(existing["EmpID"])
+
+    normalized_email = (email or "").strip().lower()
+    safe_group_id = group_id or 10
+    with transactional() as (conn, cursor):
+        cursor.execute(
+            "SELECT TOP 1 EmpID FROM Intra_Users WHERE LOWER(LTRIM(RTRIM(ISNULL(EmailAddress, '')))) = ?",
+            (normalized_email,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return int(row[0])
+
+        cursor.execute("SELECT ISNULL(MAX(EmpID), 0) + 1 FROM Intra_Users")
+        new_id = int(cursor.fetchone()[0])
+        cursor.execute(
+            """
+            INSERT INTO Intra_Users (EmpID, FirstName, LastName, EmailAddress, GroupID)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (new_id, first_name or "", last_name or "", email, safe_group_id),
+        )
+        return new_id
+
+
 def create_user(first_name: str, last_name: str, email: str,
                 department_id: int, designation_id: int, group_id: int,
                 username: str, password: str) -> int:
@@ -485,7 +535,8 @@ def delete_workflow_transition(transition_id: int) -> None:
 # ═══════════════════════════════════════════════════════════════
 
 def get_user_module_roles(module_id: int) -> list[dict]:
-    """Get all user-role assignments for a specific module."""
+    """Get all user-role assignments for a specific module.
+    Uses LEFT JOIN so Auth-only users (not in Intra_Users) still appear."""
     sql = """
         SELECT umr.id, umr.module_id, umr.emp_id, umr.role_key,
                umr.assigned_by, umr.assigned_at,
@@ -493,17 +544,17 @@ def get_user_module_roles(module_id: int) -> list[dict]:
                u.EmailAddress AS user_email,
                a.FirstName + ' ' + a.LastName AS assigned_by_name
         FROM Intra_Admin_UserModuleRole umr
-        INNER JOIN Intra_Users u ON umr.emp_id = u.EmpID
+        LEFT JOIN Intra_Users u ON umr.emp_id = u.EmpID
         LEFT JOIN Intra_Users a ON umr.assigned_by = a.EmpID
         WHERE umr.module_id = ?
-        ORDER BY u.FirstName, u.LastName, umr.role_key
+        ORDER BY umr.role_key, umr.emp_id
     """
     with read_only() as cursor:
         cursor.execute(sql, (module_id,))
         return _rows_to_list(cursor, cursor.fetchall())
 
 
-def get_user_roles_for_module(emp_id: int, module_id: int) -> list[str]:
+def get_user_roles_for_module(emp_id: int | str, module_id: int) -> list[str]:
     """Get role keys for a specific user in a specific module."""
     sql = """
         SELECT role_key FROM Intra_Admin_UserModuleRole
@@ -514,7 +565,7 @@ def get_user_roles_for_module(emp_id: int, module_id: int) -> list[str]:
         return [row[0] for row in cursor.fetchall()]
 
 
-def get_all_module_roles_for_user(emp_id: int) -> dict[str, list[str]]:
+def get_all_module_roles_for_user(emp_id: int | str) -> dict[str, list[str]]:
     """Get all module roles for a user.  Returns {module_key: [role_key, …]}."""
     sql = """
         SELECT mc.module_key, umr.role_key
@@ -530,7 +581,7 @@ def get_all_module_roles_for_user(emp_id: int) -> dict[str, list[str]]:
         return result
 
 
-def assign_user_module_role(module_id: int, emp_id: int,
+def assign_user_module_role(module_id: int, emp_id: int | str,
                             role_key: str, assigned_by: int) -> None:
     """Assign a role to a user for a module (idempotent)."""
     with transactional() as (conn, cursor):
@@ -546,7 +597,7 @@ def assign_user_module_role(module_id: int, emp_id: int,
               module_id, emp_id, role_key, assigned_by))
 
 
-def revoke_user_module_role(module_id: int, emp_id: int,
+def revoke_user_module_role(module_id: int, emp_id: int | str,
                             role_key: str) -> None:
     """Remove a specific role from a user for a module."""
     with transactional() as (conn, cursor):
@@ -557,7 +608,7 @@ def revoke_user_module_role(module_id: int, emp_id: int,
         )
 
 
-def set_user_module_roles(module_id: int, emp_id: int,
+def set_user_module_roles(module_id: int, emp_id: int | str,
                           role_keys: list[str], assigned_by: int) -> None:
     """Replace all roles for a user in a module."""
     with transactional() as (conn, cursor):
@@ -575,7 +626,7 @@ def set_user_module_roles(module_id: int, emp_id: int,
             )
 
 
-def delete_all_user_module_roles(emp_id: int) -> None:
+def delete_all_user_module_roles(emp_id: int | str) -> None:
     """Remove all module role assignments for a user (used on user deletion)."""
     with transactional() as (conn, cursor):
         cursor.execute(

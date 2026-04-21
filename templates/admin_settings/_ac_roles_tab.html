@@ -1,0 +1,50 @@
+{# Roles tab — list application roles #}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);">
+  <span style="color:var(--slate-500);font-size:var(--text-sm);">{{ roles|length if roles else 0 }} role(s)</span>
+  <a href="{{ url_for('admin.ac_create_role') }}" class="btn btn--primary btn--sm">+ Create Role</a>
+</div>
+
+{% if roles %}
+<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);overflow:hidden;">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Code</th>
+          <th>Scope</th>
+          <th>Status</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in roles %}
+        <tr>
+          <td style="font-weight:var(--font-medium);color:var(--slate-800);">{{ r.name }}</td>
+          <td><code style="font-size:var(--text-xs);background:var(--slate-100);padding:2px 6px;border-radius:var(--radius-sm);">{{ r.code }}</code></td>
+          <td style="color:var(--slate-500);">{{ r.scope_type or '—' }}</td>
+          <td>
+            {% if r.is_active %}
+            <span class="badge badge--success">Active</span>
+            {% else %}
+            <span class="badge badge--secondary">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="text-align:right;">
+            <a href="{{ url_for('admin.ac_role_permissions', role_id=r.id) }}"
+               class="btn btn--secondary btn--sm">
+              Permissions
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div style="text-align:center;padding:var(--sp-12);color:var(--slate-400);">
+  <div style="font-size:var(--text-3xl);margin-bottom:var(--sp-2);">&#128179;</div>
+  <p>No roles found for this application.</p>
+</div>
+{% endif %}

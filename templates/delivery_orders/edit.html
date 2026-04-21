@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Edit {{ order.PO_Number }}{% endblock %}
 
 {% block content %}
@@ -73,10 +73,10 @@
         </div>
         <div class="form-group">
           <label class="form-label">Bill To *</label>
-          <select name="bill_to" class="form-select ss-target" required>
+          <select name="bill_to" class="form-select ss-target" id="billToSelect" required>
             <option value="">Select</option>
             {% for c in lookups.bill_to_list %}
-            <option value="{{ c.SapCode }}" {{ 'selected' if order.Bill_To_SapCode|string == c.SapCode|string }}>
+            <option value="{{ c.SapCode }}" data-derived-marks="{{ c.DerivedMarksNumbers|default('', true) }}" {{ 'selected' if order.Bill_To_SapCode|string == c.SapCode|string }}>
               {{ c.SapCodeFromSAP or c.SapCode }} | {{ c.Name }}
             </option>
             {% endfor %}
@@ -130,6 +130,11 @@
           <input type="text" name="shipping_agent" class="form-input" required
                  value="{{ order.Shipping_Agent or '' }}">
         </div>
+         <div class="form-group">
+           <label class="form-label">Marks & Numbers</label>
+           <input type="text" id="marksNumbers" name="marks_numbers" class="form-input" readonly value="{{ order.Marks_Numbers or '' }}">
+           <small style="color: var(--slate-500); margin-top: 4px; display: block;">Auto-filled based on Bill To customer</small>
+         </div>
       </div>
 
       <div style="display:flex;justify-content:flex-end;gap:var(--sp-3);margin-top:var(--sp-6);">
@@ -142,4 +147,28 @@
 
 {% include "delivery_orders/_restricted_word_check.html" %}
 {% include "delivery_orders/_searchable_select.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function() {
+    const billToSelect = document.getElementById('billToSelect');
+    const marksInput = document.getElementById('marksNumbers');
+
+    function applyMarksNumbersFromBillTo() {
+      if (!billToSelect || !marksInput) return;
+
+      const selectedOption = billToSelect.options[billToSelect.selectedIndex];
+      if (!selectedOption || !billToSelect.value) {
+        marksInput.value = '';
+        return;
+      }
+
+      marksInput.value = selectedOption.dataset.derivedMarks || '';
+    }
+
+    billToSelect?.addEventListener('change', applyMarksNumbersFromBillTo);
+    applyMarksNumbersFromBillTo();
+  })();
+</script>
 {% endblock %}

@@ -22,6 +22,7 @@ from services.delivery_order_service import (
     list_orders,
     get_order_detail,
     get_form_lookups,
+    derive_marks_numbers_for_bill_to,
     create_new_order,
     update_existing_order,
     change_order_status,
@@ -70,6 +71,7 @@ _REQUIRED_FIELDS = {
     "currency": "Currency",
     "notify_party": "Notify Party",
     "shipping_agent": "Shipping Agent",
+    "marks_numbers": "Marks & Numbers",
 }
 
 
@@ -193,8 +195,12 @@ def create_post():
         "notify_party":         request.form.get("notify_party"),
         "shipping_agent":       request.form.get("shipping_agent"),
         "currency":             request.form.get("currency", "USD"),
+        "marks_numbers":        request.form.get("marks_numbers", ""),
         "created_by":           session.get("emp_id"),
     }
+
+    # Never trust readonly form fields; compute from Bill To server-side.
+    data["marks_numbers"] = derive_marks_numbers_for_bill_to(data.get("bill_to"))
 
     missing = [label for key, label in _REQUIRED_FIELDS.items()
                if not (data.get(key) or "").strip()]
@@ -287,8 +293,12 @@ def edit_post(order_id):
         "notify_party":         request.form.get("notify_party"),
         "shipping_agent":       request.form.get("shipping_agent"),
         "currency":             request.form.get("currency", "USD"),
+        "marks_numbers":        request.form.get("marks_numbers", ""),
         "modified_by":          session.get("emp_id"),
     }
+
+    # Never trust readonly form fields; compute from Bill To server-side.
+    data["marks_numbers"] = derive_marks_numbers_for_bill_to(data.get("bill_to"))
 
     # ── Required field check ────────────────────────────────────
     missing = [label for key, label in _REQUIRED_FIELDS.items()
@@ -299,6 +309,9 @@ def edit_post(order_id):
 
     # ── Restricted word check ──────────────────────────────────
     rw_error = _check_restricted_words(data)
+    if rw_error:
+        flash(rw_error, "danger")
+        return redirect(url_for("delivery_orders.edit_form", order_id=order_id))
 
     try:
         update_existing_order(order_id, data)
@@ -324,9 +337,16 @@ def change_status(order_id):
         flash("No status specified.", "danger")
         return redirect(url_for("delivery_orders.order_detail", order_id=order_id))
 
-    ok, errors = change_order_status(order_id, new_status, emp_id, reject_reason, reject_remarks)
+    ok, errors, actual_status = change_order_status(order_id, new_status, emp_id, reject_reason, reject_remarks)
     if ok:
-        flash(f"Order status changed to {new_status}.", "success")
+        if actual_status == "PENDING CUSTOMER APPROVAL":
+            flash(
+                "Order sent to Customer Manager for approval "
+                "(Sole Proprietorship / unregistered party detected).",
+                "info",
+            )
+        else:
+            flash(f"Order status changed to {actual_status}.", "success")
     else:
         for err in errors:
             flash(err, "warning")

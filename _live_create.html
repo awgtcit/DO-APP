@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login – Intranet Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #006633;
+            --secondary: #00894d;
+            --dark: #003d1f;
+            --mint: #e8f5e9;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 50%, var(--secondary) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-header {
+            background: var(--dark);
+            color: #fff;
+            padding: 2rem 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .login-header .brand-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            font-size: 1.8rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .login-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .login-header p {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin: 0;
+        }
+
+        .login-body {
+            padding: 2rem;
+        }
+
+        .form-floating>.form-control {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            height: 3.2rem;
+        }
+
+        .form-floating>.form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 102, 51, 0.15);
+        }
+
+        .btn-login {
+            background: var(--primary);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            transition: all 0.2s;
+        }
+
+        .btn-login:hover {
+            background: var(--dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 102, 51, 0.3);
+        }
+
+        .btn-login:disabled {
+            background: #aaa;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-footer {
+            text-align: center;
+            padding: 0 2rem 1.5rem;
+            color: #999;
+            font-size: 0.8rem;
+        }
+
+        .alert { border-radius: 10px; font-size: 0.9rem; }
+        .spinner-border-sm { width: 1rem; height: 1rem; border-width: 0.15em; }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <div class="brand-icon">
+                <i class="bi bi-building"></i>
+            </div>
+            <h1>Intranet Portal</h1>
+            <p>Al Wahdania General Trading Co. LLC</p>
+        </div>
+
+        <div class="login-body">
+            
+            
+            
+
+            <form method="POST" action="/auth/login" id="loginForm">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="login_id" name="login_id"
+                        placeholder="Email or Employee ID" required autofocus
+                        value="">
+                    <label for="login_id"><i class="bi bi-person me-1"></i>Email or Employee ID</label>
+                </div>
+
+                <div class="form-floating mb-4">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password"
+                        required>
+                    <label for="password"><i class="bi bi-lock me-1"></i>Password</label>
+                </div>
+
+                <button type="submit" class="btn btn-login btn-primary w-100" id="loginBtn">
+                    <span id="loginText">Sign In</span>
+                    <span id="loginSpinner" class="d-none">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Authenticating...
+                    </span>
+                </button>
+            </form>
+
+            <div style="display:flex;align-items:center;margin:1.25rem 0;color:#999;font-size:.85rem;">
+                <span style="flex:1;border-bottom:1px solid #ddd;"></span>
+                <span style="padding:0 .75rem;">or</span>
+                <span style="flex:1;border-bottom:1px solid #ddd;"></span>
+            </div>
+
+            <!-- SSO Button (toggles employee ID form) -->
+            <button type="button" class="btn btn-outline-primary w-100" id="ssoToggleBtn"
+                style="border-radius:10px;padding:.65rem;font-size:.95rem;" onclick="toggleSsoForm()">
+                <i class="bi bi-phone me-1"></i> Sign in via Mobile App
+            </button>
+
+            <!-- SSO Employee ID Form (hidden by default) -->
+            <div id="ssoForm" style="display:none;margin-top:1rem;">
+                <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:1rem;margin-bottom:1rem;">
+                    <p style="margin:0;font-size:.85rem;color:#005528;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Enter your Employee ID. A verification number will be sent to your mobile device.
+                    </p>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="sso_employee_id" placeholder="Employee ID" required>
+                    <label for="sso_employee_id"><i class="bi bi-person-badge me-1"></i>Employee ID</label>
+                </div>
+                <div id="ssoError" class="alert alert-danger d-none" role="alert"></div>
+                <button type="button" class="btn btn-login btn-primary w-100" id="ssoSubmitBtn" onclick="submitSso()">
+                    <span id="ssoText">Send Verification</span>
+                    <span id="ssoSpinner" class="d-none">
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Sending...
+                    </span>
+                </button>
+                <button type="button" class="btn btn-link w-100 mt-2" style="color:#999;font-size:.85rem;"
+                    onclick="toggleSsoForm()">
+                    Back to password login
+                </button>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            <p class="mb-0">AL WAHDANIA GROUP &middot; Intranet Portal</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function () {
+            var btn = document.getElementById('loginBtn');
+            var text = document.getElementById('loginText');
+            var spinner = document.getElementById('loginSpinner');
+            btn.disabled = true;
+            text.classList.add('d-none');
+            spinner.classList.remove('d-none');
+        });
+
+        function toggleSsoForm() {
+            var loginForm = document.getElementById('loginForm');
+            var ssoForm = document.getElementById('ssoForm');
+            var ssoBtn = document.getElementById('ssoToggleBtn');
+            var isShowing = ssoForm.style.display !== 'none';
+
+            if (isShowing) {
+                ssoForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                ssoBtn.style.display = 'block';
+                document.getElementById('ssoError').classList.add('d-none');
+            } else {
+                loginForm.style.display = 'none';
+                ssoBtn.style.display = 'none';
+                ssoForm.style.display = 'block';
+                document.getElementById('sso_employee_id').focus();
+            }
+        }
+
+        function submitSso() {
+            var employeeId = document.getElementById('sso_employee_id').value.trim();
+            var errorDiv = document.getElementById('ssoError');
+            var submitBtn = document.getElementById('ssoSubmitBtn');
+            var ssoText = document.getElementById('ssoText');
+            var ssoSpinner = document.getElementById('ssoSpinner');
+
+            errorDiv.classList.add('d-none');
+
+            if (!employeeId) {
+                errorDiv.textContent = 'Please enter your Employee ID';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            ssoText.classList.add('d-none');
+            ssoSpinner.classList.remove('d-none');
+
+            fetch('/auth/login/sso', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'employee_id=' + encodeURIComponent(employeeId)
+            })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        window.location.href = data.redirect;
+                    } else {
+                        errorDiv.textContent = data.message || 'SSO login failed';
+                        errorDiv.classList.remove('d-none');
+                        submitBtn.disabled = false;
+                        ssoText.classList.remove('d-none');
+                        ssoSpinner.classList.add('d-none');
+                    }
+                })
+                .catch(function () {
+                    errorDiv.textContent = 'Connection error. Please try again.';
+                    errorDiv.classList.remove('d-none');
+                    submitBtn.disabled = false;
+                    ssoText.classList.remove('d-none');
+                    ssoSpinner.classList.add('d-none');
+                });
+        }
+
+        document.getElementById('sso_employee_id').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitSso(); }
+        });
+    </script>
+</body>
+
+</html>

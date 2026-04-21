@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}Admin Settings{% endblock %}
+{% extends base_template|default("base.html") %}
+{% block title %}Admin{% endblock %}
 
 {% block content %}
 <!-- Flash messages -->
@@ -15,15 +15,14 @@
 <div style="max-width: 1200px; margin: 0 auto; padding: var(--sp-6);">
   <h1
     style="font-size: var(--text-2xl); font-weight: var(--font-bold); color: var(--slate-800); margin-bottom: var(--sp-2);">
-    Admin Settings
+    Admin
   </h1>
-  <p style="color: var(--slate-500); margin-bottom: var(--sp-8);">Manage users, permissions, modules, workflows and
-    restricted words.</p>
+  <p style="color: var(--slate-500); margin-bottom: var(--sp-8);">Manage users, modules, workflows and restricted words.</p>
 
   <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-6);">
 
-    <!-- Users -->
-    <a href="{{ url_for('admin_settings.users') }}" class="card"
+    <!-- Users (from Auth Platform) -->
+    <a href="{{ url_for('admin.users') }}" class="card"
       style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
       <div
         style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--brand-50);display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
@@ -35,13 +34,12 @@
       </div>
       <h3
         style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-1);">
-        User Management</h3>
-      <p style="font-size:var(--text-sm);color:var(--slate-500);">Create, edit, delete users. Reset passwords and manage
-        permissions.</p>
+        Users</h3>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);">View users assigned to this application via Auth Platform.</p>
     </a>
 
     <!-- Restricted Words -->
-    <a href="{{ url_for('admin_settings.restricted_words') }}" class="card"
+    <a href="{{ url_for('admin.restricted_words') }}" class="card"
       style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
       <div
         style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--red-50);display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
@@ -59,7 +57,7 @@
     </a>
 
     <!-- Modules -->
-    <a href="{{ url_for('admin_settings.modules') }}" class="card"
+    <a href="{{ url_for('admin.modules') }}" class="card"
       style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
       <div
         style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--amber-50);display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
@@ -76,13 +74,65 @@
         per-user.</p>
     </a>
 
-    <!-- Workflow -->
-    <a href="{{ url_for('admin_settings.workflow') }}" class="card"
+    <!-- Access Control -->
+    <a href="{{ url_for('admin.access_control') }}" class="card"
       style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
       <div
-        style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--brand-50);display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
+        style="width:48px;height:48px;border-radius:var(--radius-lg);background:#ede9fe;display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-          stroke="var(--brand-600)" style="width:24px;height:24px;">
+          stroke="#7c3aed" style="width:24px;height:24px;">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+        </svg>
+      </div>
+      <h3
+        style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-1);">
+        Access Control</h3>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);">Manage users, roles and permissions via Auth Platform.</p>
+    </a>
+
+    <!-- Database Connection -->
+    {% if database_url %}
+    <a href="{{ database_url }}" class="card"
+      style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
+      <div
+        style="width:48px;height:48px;border-radius:var(--radius-lg);background:#f0f9ff;display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+          stroke="#0369a1" style="width:24px;height:24px;">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+        </svg>
+      </div>
+      <h3
+        style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-1);">
+        Database</h3>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);">Switch the SQL Server connection and optionally migrate all tables and data.</p>
+    </a>
+    {% else %}
+    <div class="card"
+      style="padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); opacity: .65; cursor: not-allowed;">
+      <div
+        style="width:48px;height:48px;border-radius:var(--radius-lg);background:#f0f9ff;display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+          stroke="#0369a1" style="width:24px;height:24px;">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+        </svg>
+      </div>
+      <h3
+        style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-1);">
+        Database</h3>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);">Database settings are temporarily unavailable.</p>
+    </div>
+    {% endif %}
+
+    <!-- Workflow -->
+    <a href="{{ url_for('admin.workflow') }}" class="card"
+      style="text-decoration:none; padding: var(--sp-6); border-radius: var(--radius-lg); border: 1px solid var(--slate-200); transition: box-shadow .2s, border-color .2s;">
+      <div
+        style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--green-50);display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4);">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+          stroke="var(--green-600)" style="width:24px;height:24px;">
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
         </svg>

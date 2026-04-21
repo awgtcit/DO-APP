@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends base_template|default("base.html") %}
 {% block title %}Delivery Orders — Dashboard{% endblock %}
 
 {% block head %}
@@ -342,6 +342,18 @@
 
   .kpi--need-attach .kpi-card__bar-fill {
     background: linear-gradient(90deg, #ca8a04, #facc15);
+  }
+
+  .kpi--pending-approval .kpi-card__icon {
+    background: #ede9fe;
+  }
+
+  .kpi--pending-approval .kpi-card__icon svg {
+    stroke: #7c3aed;
+  }
+
+  .kpi--pending-approval .kpi-card__bar-fill {
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
   }
 
   /* ── Overview Section ───────────────────────────────────────── */
@@ -790,6 +802,33 @@
           <div class="kpi-card__bar-fill" style="width:{{ attach_pct }}%;"></div>
         </div>
         <span class="kpi-card__pct">{{ attach_pct }}%</span>
+      </div>
+    </a>
+    {% endif %}
+
+    {% if is_do_customer_manager or is_do_admin or is_do_finance or is_do_creator %}
+    <!-- Pending Customer Approval -->
+    {% set pending_approval = stats.pending_customer_approval or 0 %}
+    {% set pending_approval_pct = ((pending_approval / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='PENDING CUSTOMER APPROVAL') }}" class="kpi-card kpi--pending-approval">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ pending_approval }}</div>
+          <div class="kpi-card__label">Pending Approval</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ pending_approval_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ pending_approval_pct }}%</span>
       </div>
     </a>
     {% endif %}

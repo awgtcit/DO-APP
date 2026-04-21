@@ -8,6 +8,7 @@ and AUTH_API_KEY in the app's environment / config.
 import json
 import logging
 import os
+import re
 import urllib.request
 import urllib.error
 
@@ -175,3 +176,200 @@ def poll_sso_challenge(challenge_id, poll_token=''):
     if result.get('success') and result.get('data'):
         return result['data']
     return None
+
+
+# ── Access-Control SDK (Roles / Permissions / Users) ──────────────────────
+
+def get_app_roles(application_id):
+    """Get all roles for this application (API-key auth via sync endpoint)."""
+    params = f'?application_id={application_id}'
+    result = _api_request('GET', f'/api/sync/roles{params}')
+    if result.get('success'):
+        return result.get('data', [])
+    logger.warning("get_app_roles failed: %s", result.get('message'))
+    return []
+
+
+def get_all_permissions(application_id=None):
+    """List every permission registered in Auth-App (API-key auth)."""
+    params = f'?application_id={application_id}' if application_id else ''
+    result = _api_request('GET', f'/api/permissions{params}')
+    if result.get('success'):
+        return result.get('data', [])
+    logger.warning("get_all_permissions failed: %s", result.get('message'))
+    return []
+
+
+def get_role_permissions(role_id):
+    """Get permissions mapped to a specific role (API-key auth)."""
+    result = _api_request('GET', f'/api/roles/{role_id}/permissions')
+    if result.get('success'):
+        return result.get('data', [])
+    logger.warning("get_role_permissions failed: %s", result.get('message'))
+    return []
+
+
+def map_role_permissions(role_id, permission_ids, application_id=None):
+    """Full-replace permissions for a role (API-key auth via sync endpoint)."""
+    result = _api_request('PUT', f'/api/sync/roles/{role_id}/permissions',
+                          data={'application_id': application_id,
+                                'permission_ids': permission_ids})
+    return result
+
+
+def get_app_users(application_id, page=1, per_page=50):
+    """List users assigned to this application (API-key auth).
+    Returns (list, meta_dict) on success, (None, None) on failure."""
+    params = f'?page={int(page)}&per_page={int(per_page)}'
+    result = _api_request('GET', f'/api/applications/{application_id}/users{params}')
+    if result.get('success'):
+        return result.get('data', []), result.get('meta', {})
+    logger.warning("get_app_users failed: %s", result.get('message'))
+    return None, None
+
+
+def get_user_roles(user_id, application_id=None):
+    """Get roles assigned to a user (API-key auth via sync endpoint)."""
+    params = f'?application_id={application_id}' if application_id else ''
+    result = _api_request('GET', f'/api/sync/users/{user_id}/roles{params}')
+    if result.get('success'):
+        return result.get('data', [])
+    logger.warning("get_user_roles failed: %s", result.get('message'))
+    return []
+
+
+def sync_user_roles(user_id, application_id, role_codes):
+    """Replace user's roles for this application (API-key auth via sync endpoint)."""
+    result = _api_request('PUT', f'/api/sync/users/{user_id}/roles', data={
+        'application_id': application_id,
+        'role_codes': role_codes,
+    })
+    return result
+
+
+def get_effective_permissions(user_id, application_id):
+    """Resolve effective permission codes for a user (API-key auth)."""
+    params = f'?application_id={application_id}'
+    result = _api_request('GET', f'/api/users/{user_id}/permissions{params}')
+    if result.get('success'):
+        return result.get('data', [])
+    logger.warning("get_effective_permissions failed: %s", result.get('message'))
+    return []
+
+
+def refresh_session_permissions(user_id, application_id):
+    """Fetch fresh permissions from Auth-App and return them as a list of codes."""
+    perms = get_effective_permissions(user_id, application_id)
+    return [p['code'] if isinstance(p, dict) else p for p in perms]
+
+
+def persist_env_config(updates):
+    """Persist key-value pairs to the project .env file.
+    `updates` is a dict of ENV_KEY -> value.
+    Synchronous I/O is acceptable here — config saves are rare admin actions."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+    env_path = os.path.normpath(env_path)
+
+    if not updates:
+        return
+
+    # Sanitize: strip newlines and control characters to prevent env injection
+    sanitized = {}
+    for k, v in updates.items():
+        clean = re.sub(r'[\r\n\x00-\x1f]', '', str(v))
+        sanitized[k] = clean
+    updates = sanitized
+
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+    updated_keys = set()
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith('#') and '=' in stripped:
+            env_key = stripped.split('=', 1)[0].strip()
+            if env_key in updates:
+                new_lines.append(f'{env_key}="{updates[env_key]}"\n')
+                updated_keys.add(env_key)
+                continue
+        new_lines.append(line)
+
+    for env_key, env_val in updates.items():
+        if env_key not in updated_keys:
+            new_lines.append(f'{env_key}="{env_val}"\n')
+
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(new_lines)
+
+
+def verify_connectivity(auth_url, api_key=''):
+    """Test connectivity and API reachability of an Auth-App instance.
+    Returns dict with 'connectivity', 'api_reachable', 'success', 'message'."""
+    result = {'connectivity': False, 'api_reachable': False, 'success': False, 'message': ''}
+
+    # Step 1: Connectivity check
+    try:
+        req = urllib.request.Request(auth_url, method='GET')
+        req.add_header('User-Agent', 'DO-Admin/1.0')
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            connectivity_ok = resp.status < 500
+    except urllib.error.HTTPError as e:
+        connectivity_ok = e.code < 500
+    except Exception as exc:
+        result['message'] = f'Cannot reach Auth server: {exc}'
+        return result
+
+    result['connectivity'] = connectivity_ok
+    if not connectivity_ok:
+        result['message'] = 'Auth server returned a server error.'
+        return result
+
+    # Step 2: API authentication check
+    try:
+        test_url = f"{auth_url.rstrip('/')}/api/authorize/validate-token"
+        body = json.dumps({'token': '__connection_test__'}).encode('utf-8')
+        req = urllib.request.Request(test_url, data=body, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('User-Agent', 'DO-Admin/1.0')
+        if api_key:
+            req.add_header('X-API-Key', api_key)
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            result['api_reachable'] = True
+            result['success'] = True
+            result['message'] = 'API endpoint responded successfully.'
+    except urllib.error.HTTPError as e:
+        if e.code in (400, 401, 403, 422):
+            result['api_reachable'] = True
+            result['success'] = True
+            result['message'] = f'API endpoint reachable (HTTP {e.code}).'
+        else:
+            result['message'] = f'API returned HTTP {e.code}.'
+    except Exception as exc:
+        result['message'] = f'API check failed: {exc}'
+
+    if not result['success']:
+        result['message'] = f"Server reachable but API check failed. {result['message']}"
+    return result
+
+
+def create_role(application_id, code, name, description='', scope_type='APPLICATION'):
+    """Create a new role via the sync endpoint (single-role push)."""
+    role_data = {
+        'code': code,
+        'name': name,
+        'description': description,
+        'scope_type': scope_type,
+    }
+    result = _api_request('POST', '/api/sync/roles', data={
+        'application_id': application_id,
+        'roles': [role_data],
+    })
+    if result.get('success'):
+        created = result.get('data', {}).get('created', [])
+        if created:
+            return {'success': True, 'role_id': created[0].get('id'), 'code': code}
+        return {'success': True, 'message': 'Role already exists or was updated'}
+    return {'success': False, 'message': result.get('message', 'Failed to create role')}

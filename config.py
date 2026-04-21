@@ -20,6 +20,7 @@ class Config:
 
     # Flask core
     SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+    SESSION_COOKIE_NAME = "do_session"
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("FLASK_ENV") == "production"
@@ -51,7 +52,7 @@ class Config:
     AUTH_BASE_URL = os.environ.get("AUTH_BASE_URL", "http://127.0.0.1:5001")
     AUTH_API_KEY = os.environ.get("AUTH_API_KEY", "")
     AUTH_APP_APPLICATION_ID = os.environ.get("AUTH_APP_APPLICATION_ID", "")
-    AUTH_APP_CODE = os.environ.get("AUTH_APP_CODE", "DOAPP")
+    AUTH_APP_CODE = os.environ.get("AUTH_APP_CODE", "DO")
 
     # ── SMTP ───────────────────────────────────────────────────────
     SMTP_HOST = os.environ.get("SMTP_HOST") or os.environ.get("SMTP_SERVER", "")

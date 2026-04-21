@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}User Management — Admin Settings{% endblock %}
+{% extends base_template|default("base.html") %}
+{% block title %}Users — Admin{% endblock %}
 
 {% block content %}
 <div class="toast-container" id="toastContainer">
@@ -13,21 +13,18 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-6);">
     <div>
       <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-1);">
-        <a href="{{ url_for('admin_settings.index') }}" style="color:var(--slate-400);text-decoration:none;font-size:var(--text-sm);">Settings</a>
+        <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;font-size:var(--text-sm);">Admin</a>
         <span style="color:var(--slate-300);">/</span>
         <span style="color:var(--slate-600);font-size:var(--text-sm);">Users</span>
       </div>
-      <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);">User Management</h1>
+      <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);">Assigned Users</h1>
+      <p style="font-size:var(--text-sm);color:var(--slate-500);margin-top:var(--sp-1);">Users assigned to this application via Auth Platform. To manage users, visit the Auth Platform.</p>
     </div>
-    <a href="{{ url_for('admin_settings.user_create') }}" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:var(--sp-2);">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:18px;height:18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-      Add User
-    </a>
   </div>
 
   <!-- Search -->
   <div style="margin-bottom:var(--sp-4);">
-    <input type="text" class="form-input" id="userSearch" placeholder="Search users by name, email, or department..." style="max-width:400px;">
+    <input type="text" class="form-input" id="userSearch" placeholder="Search users by name, email, or role..." style="max-width:400px;">
   </div>
 
   <!-- Table -->
@@ -36,46 +33,51 @@
       <table class="data-table" id="usersTable">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Name</th>
             <th>Email</th>
-            <th>Username</th>
-            <th>Department</th>
-            <th>Group</th>
-            <th style="text-align:right;">Actions</th>
+            <th>Employee ID</th>
+            <th>Status</th>
+            <th>Assigned</th>
           </tr>
         </thead>
         <tbody>
           {% for u in users %}
           <tr>
-            <td>{{ u.EmpID }}</td>
-            <td style="font-weight:var(--font-medium);color:var(--slate-800);">{{ u.FirstName }} {{ u.LastName }}</td>
-            <td>{{ u.EmailAddress or u.CredEmail or '—' }}</td>
-            <td>{{ u.CredUsername or '—' }}</td>
-            <td>{{ u.DepartmentName or '—' }}</td>
+            <td style="font-weight:var(--font-medium);color:var(--slate-800);">{{ u.first_name or '' }} {{ u.last_name or '' }}</td>
+            <td>{{ u.email or '—' }}</td>
+            <td>{{ u.employee_id or '—' }}</td>
             <td>
-              {% if u.GroupID == 1 %}
-                <span class="badge badge--brand">Admin</span>
+              {% if u.is_blocked %}
+                <span class="badge badge--red">Blocked</span>
               {% else %}
-                <span class="badge badge--slate">User</span>
+                <span class="badge badge--green">Active</span>
               {% endif %}
             </td>
-            <td style="text-align:right;white-space:nowrap;">
-              <a href="{{ url_for('admin_settings.user_edit', emp_id=u.EmpID) }}" class="btn btn-secondary btn-sm">Edit</a>
-              <a href="{{ url_for('admin_settings.user_permissions', emp_id=u.EmpID) }}" class="btn btn-ghost btn-sm">Permissions</a>
-              <form method="POST" action="{{ url_for('admin_settings.user_delete', emp_id=u.EmpID) }}" style="display:inline;" onsubmit="return confirm('Delete this user permanently?');">
-                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-              </form>
-            </td>
+            <td style="font-size:var(--text-xs);color:var(--slate-400);">{{ u.created_at[:10] if u.created_at else '—' }}</td>
           </tr>
           {% endfor %}
           {% if not users %}
-          <tr><td colspan="7" style="text-align:center;padding:var(--sp-8);color:var(--slate-400);">No users found.</td></tr>
+          <tr><td colspan="5" style="text-align:center;padding:var(--sp-8);color:var(--slate-400);">No users assigned to this application.</td></tr>
           {% endif %}
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- Pagination -->
+  {% if meta and meta.total_pages > 1 %}
+  <div style="display:flex;justify-content:center;gap:var(--sp-2);margin-top:var(--sp-6);">
+    {% if meta.page > 1 %}
+    <a href="{{ url_for('admin.users', page=meta.page - 1) }}" class="btn btn-secondary btn-sm">&larr; Previous</a>
+    {% endif %}
+    <span style="display:flex;align-items:center;color:var(--slate-500);font-size:var(--text-sm);">
+      Page {{ meta.page }} of {{ meta.total_pages }} ({{ meta.total }} users)
+    </span>
+    {% if meta.page < meta.total_pages %}
+    <a href="{{ url_for('admin.users', page=meta.page + 1) }}" class="btn btn-secondary btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 
 <script>

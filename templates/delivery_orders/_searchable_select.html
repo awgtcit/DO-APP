@@ -190,7 +190,7 @@
   /* ── Auto-init .ss-target with blocked-word fetch ─ */
   const targets = document.querySelectorAll('.ss-target');
   if (targets.length) {
-    const wordsUrl = "{{ url_for('admin_settings.api_restricted_words_list') }}";
+    const wordsUrl = "{{ url_for('admin.api_restricted_words_list') }}";
     fetch(wordsUrl)
       .then(r => r.json())
       .then(data => {

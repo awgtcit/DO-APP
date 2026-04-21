@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}DO Portal{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { margin: 0; padding: 1rem; font-family: 'Inter', sans-serif; background: #fff; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="margin-bottom:.75rem;">
+    {% for category, message in messages %}
+    <div style="padding:.5rem .75rem; border-radius:8px; font-size:.875rem; margin-bottom:.25rem;
+                {% if category == 'error' %}background:#fef2f2; color:#991b1b; border:1px solid #fecaca;
+                {% elif category == 'success' %}background:#dcfce7; color:#166534; border:1px solid #bbf7d0;
+                {% else %}background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe;{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+  {# Embed context propagation — inject embed_token into HTMX, forms, and fetch #}
+  <script>
+  (function(){
+    var embedToken = '{{ embed_token|default("") }}';
+    var csrfToken = '';
+
+    // Propagate embed_token on all HTMX requests
+    if (embedToken && window.htmx) {
+      document.body.addEventListener('htmx:configRequest', function(evt) {
+        evt.detail.headers['X-Embed-Token'] = embedToken;
+        if (evt.detail.parameters) {
+          evt.detail.parameters['embed_token'] = embedToken;
+          evt.detail.parameters['embed'] = '1';
+        }
+      });
+    }
+
+    // Propagate embed_token on form submit
+    if (embedToken) {
+      document.addEventListener('submit', function(evt) {
+        var form = evt.target;
+        if (form.tagName !== 'FORM') return;
+        if (!form.querySelector('input[name="embed_token"]')) {
+          var h = document.createElement('input');
+          h.type = 'hidden'; h.name = 'embed_token'; h.value = embedToken;
+          form.appendChild(h);
+        }
+        if (!form.querySelector('input[name="embed"]')) {
+          var e = document.createElement('input');
+          e.type = 'hidden'; e.name = 'embed'; e.value = '1';
+          form.appendChild(e);
+        }
+      }, true);
+    }
+
+    // Propagate embed_token on fetch
+    if (embedToken && window.fetch) {
+      var _origFetch = window.fetch;
+      window.fetch = function(url, opts) {
+        opts = opts || {};
+        opts.headers = opts.headers || {};
+        if (!opts.headers['X-Embed-Token']) opts.headers['X-Embed-Token'] = embedToken;
+        return _origFetch.call(this, url, opts);
+      };
+    }
+
+    // Propagate embed=1 on <a> link clicks (so navigation stays in embed mode)
+    document.addEventListener('click', function(evt) {
+      var a = evt.target.closest('a');
+      if (!a || !a.href) return;
+      try {
+        var u = new URL(a.href, location.origin);
+        if (u.origin !== location.origin) return;          // skip external links
+        if (!u.searchParams.has('embed')) u.searchParams.set('embed', '1');
+        if (embedToken && !u.searchParams.has('embed_token'))
+          u.searchParams.set('embed_token', embedToken);
+        a.href = u.toString();
+      } catch(e) {}
+    }, true);
+  })();
+  </script>
+  {% block extra_js %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

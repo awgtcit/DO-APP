@@ -1,0 +1,52 @@
+{# Matrix tab — Permission matrix (roles × permissions) #}
+{% if roles and categories %}
+<div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);overflow:hidden;">
+  <div style="overflow-x:auto;">
+    <table class="data-table" style="font-size:var(--text-xs);min-width:600px;">
+      <thead>
+        <tr>
+          <th style="min-width:180px;text-align:left;">Permission</th>
+          {% for role in roles %}
+          <th style="min-width:40px;padding:8px 4px;text-align:center;">
+            <span style="writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;white-space:nowrap;">
+              {{ role.name }}
+            </span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for category, perms in categories.items() %}
+        <tr style="background:var(--slate-50);">
+          <td colspan="{{ roles|length + 1 }}" style="font-weight:var(--font-bold);color:var(--slate-700);padding:var(--sp-2) var(--sp-3);">
+            {{ category.replace('_', ' ').title() }}
+          </td>
+        </tr>
+        {% for p in perms %}
+        <tr>
+          <td style="text-align:left;padding-left:var(--sp-4);">
+            {{ p.name }}
+            <code style="margin-left:var(--sp-1);font-size:var(--text-xs);color:var(--slate-400);">{{ p.code }}</code>
+          </td>
+          {% for role in roles %}
+          <td style="text-align:center;">
+            {% if p.id in matrix.get(role.id, []) %}
+            <span style="color:var(--green-600);font-weight:bold;">&#10003;</span>
+            {% else %}
+            <span style="color:var(--slate-300);">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div style="text-align:center;padding:var(--sp-12);color:var(--slate-400);">
+  <div style="font-size:var(--text-3xl);margin-bottom:var(--sp-2);">&#9783;</div>
+  <p>No roles or permissions found.</p>
+</div>
+{% endif %}
