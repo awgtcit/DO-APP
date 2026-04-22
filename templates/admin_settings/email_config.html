@@ -1,0 +1,375 @@
+{% extends base_template|default("base.html") %}
+{% block title %}Email Configuration — Admin{% endblock %}
+
+{% block content %}
+<div class="toast-container" id="toastContainer">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+  <div class="toast toast--{{ cat }}">{{ msg }}<button class="toast__close" onclick="this.parentElement.remove()">&times;</button></div>
+  {% endfor %}
+</div>
+
+<div style="max-width:1200px;margin:0 auto;padding:var(--sp-6);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);margin-bottom:var(--sp-5);">
+    <div>
+      <h1 style="font-size:var(--text-2xl);font-weight:var(--font-bold);color:var(--slate-800);margin:0;">Email Configuration</h1>
+      <p style="margin-top:var(--sp-1);color:var(--slate-500);">Manage SMTP and workflow email notifications.</p>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('admin.index') }}">Back to Admin</a>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+    <section style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-lg);padding:var(--sp-5);">
+      <h2 style="font-size:var(--text-lg);margin-bottom:var(--sp-4);">SMTP Configuration</h2>
+      <form method="POST" action="{{ url_for('admin.email_config_smtp_save') }}">
+        <input type="hidden" name="id" value="{{ active_smtp.id if active_smtp else '' }}">
+        <div style="display:grid;grid-template-columns:1fr 130px;gap:var(--sp-2);margin-bottom:var(--sp-2);">
+          <input class="form-input" type="text" name="smtp_host" placeholder="SMTP Host" value="{{ active_smtp.smtp_host if active_smtp else '' }}" required>
+          <input class="form-input" type="number" name="smtp_port" placeholder="Port" value="{{ active_smtp.smtp_port if active_smtp else 587 }}" required>
+        </div>
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="smtp_username" placeholder="SMTP Username" value="{{ active_smtp.smtp_username if active_smtp else '' }}" required>
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="password" name="smtp_password" placeholder="SMTP Password (leave blank to keep existing)">
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="email" name="sender_email" placeholder="Sender Email" value="{{ active_smtp.sender_email if active_smtp else '' }}" required>
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="sender_name" placeholder="Sender Name" value="{{ active_smtp.sender_name if active_smtp else '' }}">
+
+        <label style="display:block;font-size:var(--text-sm);">Confirmation Subject</label>
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="confirmation_subject" placeholder="SMTP Configuration Saved Successfully" value="{{ active_smtp.confirmation_subject if active_smtp and active_smtp.confirmation_subject else 'SMTP Configuration Saved Successfully' }}">
+
+        <label style="display:block;font-size:var(--text-sm);">Confirmation Body (HTML allowed)</label>
+        <textarea class="form-input" name="confirmation_body" rows="5" placeholder="Write confirmation email body sent after Save SMTP.">{{ active_smtp.confirmation_body if active_smtp and active_smtp.confirmation_body else '' }}</textarea>
+
+        <div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--sp-3);">
+          <label><input type="checkbox" name="use_tls" value="1" {% if not active_smtp or active_smtp.use_tls %}checked{% endif %}> TLS</label>
+          <label><input type="checkbox" name="use_ssl" value="1" {% if active_smtp and active_smtp.use_ssl %}checked{% endif %}> SSL</label>
+          <label><input type="checkbox" name="is_active" value="1" {% if not active_smtp or active_smtp.is_active %}checked{% endif %}> Active</label>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save SMTP</button>
+      </form>
+
+      <form method="POST" action="{{ url_for('admin.email_config_smtp_test') }}" style="margin-top:var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--slate-100);">
+        <h3 style="font-size:var(--text-sm);margin-bottom:var(--sp-2);">Test Email</h3>
+        <input type="hidden" name="config_id" value="{{ active_smtp.id if active_smtp else 0 }}">
+        <div style="display:flex;gap:var(--sp-2);">
+          <input class="form-input" type="email" name="test_email" placeholder="recipient@example.com" required>
+          <button class="btn btn-secondary" type="submit">Send Test</button>
+        </div>
+      </form>
+    </section>
+
+    <section style="background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-lg);padding:var(--sp-5);">
+      <h2 style="font-size:var(--text-lg);margin-bottom:var(--sp-4);">Workflow Email Settings</h2>
+      <p style="margin-top:-8px;margin-bottom:var(--sp-3);color:var(--slate-500);font-size:var(--text-sm);">
+        Select a status, edit Subject/Body and recipients, then click Save Workflow Email.
+      </p>
+
+      <form method="GET" action="{{ url_for('admin.email_config') }}" style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-3);">
+        <select class="form-select" name="module" onchange="this.form.submit()">
+          {% for mk, label in workflow_modules.items() %}
+          <option value="{{ mk }}" {% if mk == module_key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <select class="form-select" name="status" onchange="this.form.submit()">
+          <option value="">Select status…</option>
+          {% for st in statuses %}
+          <option value="{{ st.status_key }}" {% if status_key == st.status_key %}selected{% endif %}>{{ st.display_name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <form id="previewForm" method="POST" action="{{ url_for('admin.email_config_workflow_save') }}" enctype="multipart/form-data">
+        <input type="hidden" name="module_key" value="{{ module_key }}">
+        <input type="hidden" name="status_key" value="{{ status_key }}">
+
+        <div style="margin-bottom:var(--sp-2);">
+          <label style="display:block;font-size:var(--text-sm);">Enable notification</label>
+          <input type="checkbox" name="is_enabled" value="1" {% if not selected_setting or selected_setting.is_enabled %}checked{% endif %}>
+        </div>
+
+        {% set default_subject = "DO {{do_number}} - {{status}}" %}
+        {% set default_body = "<p>Dear Team,</p><p>Delivery Order <b>{{do_number}}</b> for <b>{{customer_name}}</b> is now <b>{{status}}</b>.</p><p>Date: {{date}}</p><p><a href='{{order_link}}'>Open order</a></p>" %}
+
+        <label style="display:block;font-size:var(--text-sm);">Subject</label>
+        <input class="form-input" style="margin-bottom:var(--sp-2);" id="subject_template" type="text" name="subject_template" placeholder="Order {{do_number}} is {{status}}" value="{{ selected_setting.subject_template if selected_setting else default_subject }}" required>
+
+        <label style="display:block;font-size:var(--text-sm);">Body (HTML allowed)</label>
+        <textarea class="form-input" id="body_template" name="body_template" rows="7" placeholder="Dear {{created_by}}, ..." required>{{ selected_setting.body_template if selected_setting else default_body }}</textarea>
+
+        <div style="font-size:var(--text-xs);color:var(--slate-500);margin-top:var(--sp-1);margin-bottom:var(--sp-2);">
+          Placeholders: {{ '{{do_number}}' }}, {{ '{{customer_name}}' }}, {{ '{{date}}' }}, {{ '{{status}}' }}, {{ '{{created_by}}' }}, {{ '{{approved_by}}' }}, {{ '{{order_link}}' }}, {{ '{{reject_reason}}' }}, {{ '{{reject_remarks}}' }}
+        </div>
+
+        {# ── build selected ids and address buckets ── #}
+        {% set selected_user_ids = [] %}
+        {% set to_vals = [] %}{% set cc_vals = [] %}{% set bcc_vals = [] %}
+        {% if selected_setting and selected_setting.recipients %}
+          {% for rec in selected_setting.recipients %}
+            {% if rec.recipient_type == 'USER' %}
+              {% set _ = selected_user_ids.append(rec.recipient_value|string) %}
+            {% else %}
+              {% if rec.is_bcc %}{% set _ = bcc_vals.append(rec.recipient_value) %}
+              {% elif rec.is_cc %}{% set _ = cc_vals.append(rec.recipient_value) %}
+              {% else %}{% set _ = to_vals.append(rec.recipient_value) %}{% endif %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        {% set selected_user_bucket = 'to' %}
+        {% if selected_setting and selected_setting.recipients %}
+          {% for rec in selected_setting.recipients if rec.recipient_type == 'USER' %}
+            {% if rec.is_bcc %}
+              {% set selected_user_bucket = 'bcc' %}
+            {% elif rec.is_cc and selected_user_bucket != 'bcc' %}
+              {% set selected_user_bucket = 'cc' %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+
+        {# ── current recipients summary ── #}
+        {% set saved_user_names = [] %}
+        {% if selected_setting and selected_setting.recipients %}
+          {% for rec in selected_setting.recipients if rec.recipient_type == 'USER' %}
+            {% for u in users if (u.emp_id|string) == rec.recipient_value|string %}
+              {% set _ = saved_user_names.append(u.name ~ ' <' ~ u.email ~ '>') %}
+            {% endfor %}
+          {% endfor %}
+        {% endif %}
+        {% set all_saved = saved_user_names + to_vals + cc_vals + bcc_vals %}
+
+        {% if all_saved %}
+        <div id="currentRecipientsPanel" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-2);">
+          <div style="font-size:var(--text-xs);font-weight:600;color:#0369a1;margin-bottom:6px;letter-spacing:.04em;">✓ CURRENTLY SAVED RECIPIENTS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            {% for item in saved_user_names %}
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#0ea5e9;color:#fff;border-radius:999px;padding:2px 10px;font-size:var(--text-xs);">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              {{ item }}
+            </span>
+            {% endfor %}
+            {% for email in to_vals %}
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#6366f1;color:#fff;border-radius:999px;padding:2px 10px;font-size:var(--text-xs);">
+              TO: {{ email }}
+            </span>
+            {% endfor %}
+            {% for email in cc_vals %}
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#8b5cf6;color:#fff;border-radius:999px;padding:2px 10px;font-size:var(--text-xs);">
+              CC: {{ email }}
+            </span>
+            {% endfor %}
+            {% for email in bcc_vals %}
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#a78bfa;color:#fff;border-radius:999px;padding:2px 10px;font-size:var(--text-xs);">
+              BCC: {{ email }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-2);font-size:var(--text-xs);color:#92400e;">
+          No recipients configured for this status yet.
+        </div>
+        {% endif %}
+
+        {# hidden users data for JS #}
+        <script id="usersData" type="application/json">
+          [{% for u in users %}{"id":"{{ u.emp_id }}","name":{{ u.name|tojson }},"email":{{ u.email|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
+        </script>
+        {# hidden select that gets submitted with the form #}
+        <select name="selected_user_ids" multiple id="userSelectHidden" style="display:none;">
+          {% for u in users %}
+          <option value="{{ u.emp_id }}" {% if (u.emp_id|string) in selected_user_ids %}selected{% endif %}></option>
+          {% endfor %}
+        </select>
+
+        <div style="display:flex;align-items:end;gap:8px;justify-content:space-between;margin-bottom:4px;">
+          <label style="display:block;font-size:var(--text-sm);margin-bottom:0;">Recipients (users)</label>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:var(--text-xs);color:var(--slate-500);">Add selected users as</span>
+            <select class="form-select" name="user_recipient_bucket" style="height:30px;padding:2px 8px;font-size:12px;">
+              <option value="to" {% if selected_user_bucket == 'to' %}selected{% endif %}>TO</option>
+              <option value="cc" {% if selected_user_bucket == 'cc' %}selected{% endif %}>CC</option>
+              <option value="bcc" {% if selected_user_bucket == 'bcc' %}selected{% endif %}>BCC</option>
+            </select>
+          </div>
+        </div>
+        <div id="userPickerWrap" style="position:relative;margin-bottom:var(--sp-2);">
+          <div id="userChips" style="display:flex;flex-wrap:wrap;gap:5px;min-height:36px;padding:5px 8px;border:1px solid var(--slate-300);border-radius:6px;background:#fff;cursor:text;" onclick="document.getElementById('userSearch').focus()">
+            <input id="userSearch" type="text" autocomplete="off" placeholder="Type to search users…"
+              style="border:none;outline:none;flex:1;min-width:140px;font-size:var(--text-sm);background:transparent;padding:2px 0;">
+          </div>
+          <div id="userDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:220px;overflow-y:auto;background:#fff;border:1px solid var(--slate-300);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);margin-top:2px;"></div>
+        </div>
+
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="to_emails" placeholder="TO emails (comma separated)" value="{{ to_vals|join(', ') }}">
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="cc_emails" placeholder="CC emails (comma separated)" value="{{ cc_vals|join(', ') }}">
+        <input class="form-input" style="margin-bottom:var(--sp-2);" type="text" name="bcc_emails" placeholder="BCC emails (comma separated)" value="{{ bcc_vals|join(', ') }}">
+
+        <label style="display:block;margin-bottom:var(--sp-2);">
+          <input type="checkbox" name="include_default_attachment" value="1" {% if not selected_setting or selected_setting.include_default_attachment %}checked{% endif %}>
+          Include default DO PDF attachment
+        </label>
+
+        <div style="display:flex;gap:var(--sp-2);align-items:center;margin-bottom:var(--sp-2);">
+          <input class="form-input" type="file" name="attachment_file">
+          <label><input type="checkbox" name="attachment_is_editable" value="1"> Editable template</label>
+        </div>
+
+        <div style="display:flex;gap:var(--sp-2);">
+          <button class="btn btn-primary" type="submit">Save Workflow Email</button>
+          <button class="btn btn-secondary" type="button" onclick="previewTemplate()">Preview</button>
+        </div>
+      </form>
+
+      {% if selected_setting and selected_setting.attachments %}
+      <div style="margin-top:var(--sp-4);border-top:1px solid var(--slate-100);padding-top:var(--sp-3);">
+        <h3 style="font-size:var(--text-sm);">Attachments</h3>
+        <ul style="margin:0;padding-left:1rem;">
+          {% for att in selected_setting.attachments %}
+          <li style="margin-bottom:var(--sp-1);">
+            {{ att.original_name }}
+            {% if att.is_editable %}<span class="badge badge--amber">editable</span>{% endif %}
+            <form method="POST" action="{{ url_for('admin.email_config_attachment_delete', attachment_id=att.id) }}" style="display:inline;">
+              <input type="hidden" name="module_key" value="{{ module_key }}">
+              <input type="hidden" name="status_key" value="{{ status_key }}">
+              <button class="btn btn-danger btn-sm" type="submit">Remove</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section style="margin-top:var(--sp-6);background:var(--white);border:1px solid var(--slate-200);border-radius:var(--radius-lg);padding:var(--sp-5);">
+    <h2 style="font-size:var(--text-lg);margin-bottom:var(--sp-3);">Configured Workflow Rules ({{ module_key }})</h2>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Status</th><th>Enabled</th><th>Subject</th><th>Default Attachment</th><th></th></tr></thead>
+        <tbody>
+          {% for row in settings %}
+          {% set row_url = url_for('admin.email_config', module=module_key, status=row.status_key) %}
+          <tr class="clickable-row" onclick="window.location='{{ row_url }}'" title="Click to edit" style="cursor:pointer;{% if row.status_key == status_key %}background:var(--slate-50);outline:2px solid var(--primary-500);{% endif %}">
+            <td style="font-weight:{% if row.status_key == status_key %}600{% else %}normal{% endif %};">{{ row.display_name or row.status_key }}</td>
+            <td>
+              <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:var(--text-xs);background:{% if row.is_enabled %}#d1fae5{% else %}#fee2e2{% endif %};color:{% if row.is_enabled %}#065f46{% else %}#991b1b{% endif %};">
+                {{ 'Enabled' if row.is_enabled else 'Disabled' }}
+              </span>
+            </td>
+            <td style="max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ row.subject_template }}</td>
+            <td>{{ 'Yes' if row.include_default_attachment else 'No' }}</td>
+            <td><a class="btn btn-secondary btn-sm" href="{{ row_url }}" onclick="event.stopPropagation()">Edit</a></td>
+          </tr>
+          {% endfor %}
+          {% if not settings %}
+          <tr><td colspan="5" style="text-align:center;color:var(--slate-400);">No workflow email settings yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<style>.clickable-row:hover{background:var(--slate-50)!important;}</style>
+<script>
+// ── User picker ─────────────────────────────────────────────
+(function(){
+  const ALL_USERS = JSON.parse(document.getElementById('usersData').textContent);
+  const hiddenSelect = document.getElementById('userSelectHidden');
+  const chipsWrap   = document.getElementById('userChips');
+  const searchInput = document.getElementById('userSearch');
+  const dropdown    = document.getElementById('userDropdown');
+
+  // selected set: { id -> {id, name, email} }
+  const selected = {};
+
+  // pre-populate from hidden select (saved recipients)
+  Array.from(hiddenSelect.options).forEach(opt => {
+    if (opt.selected) {
+      const u = ALL_USERS.find(x => x.id === opt.value);
+      if (u) selected[u.id] = u;
+    }
+  });
+
+  function syncHidden() {
+    Array.from(hiddenSelect.options).forEach(opt => {
+      opt.selected = !!selected[opt.value];
+    });
+  }
+
+  function renderChips() {
+    // remove existing chips (keep the input)
+    chipsWrap.querySelectorAll('.upick-chip').forEach(c => c.remove());
+    Object.values(selected).forEach(u => {
+      const chip = document.createElement('span');
+      chip.className = 'upick-chip';
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#0ea5e9;color:#fff;border-radius:999px;padding:2px 8px 2px 10px;font-size:12px;white-space:nowrap;';
+      chip.innerHTML = `${u.name} &lt;${u.email}&gt; <button type="button" data-id="${u.id}" style="background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;">&times;</button>`;
+      chip.querySelector('button').addEventListener('click', () => {
+        delete selected[u.id];
+        renderChips();
+        syncHidden();
+      });
+      chipsWrap.insertBefore(chip, searchInput);
+    });
+  }
+
+  function renderDropdown(q) {
+    const lower = q.toLowerCase();
+    const matches = ALL_USERS.filter(u =>
+      !selected[u.id] &&
+      (u.name.toLowerCase().includes(lower) || u.email.toLowerCase().includes(lower))
+    ).slice(0, 20);
+
+    dropdown.innerHTML = '';
+    if (!matches.length) {
+      dropdown.innerHTML = '<div style="padding:8px 12px;color:#94a3b8;font-size:13px;">No users found</div>';
+    } else {
+      matches.forEach(u => {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;';
+        item.innerHTML = `<span style="font-weight:600;">${u.name}</span> <span style="color:#64748b;">&lt;${u.email}&gt;</span>`;
+        item.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selected[u.id] = u;
+          renderChips();
+          syncHidden();
+          searchInput.value = '';
+          renderDropdown('');
+          searchInput.focus();
+        });
+        item.addEventListener('mouseenter', () => item.style.background = '#f0f9ff');
+        item.addEventListener('mouseleave', () => item.style.background = '');
+        dropdown.appendChild(item);
+      });
+    }
+    dropdown.style.display = 'block';
+  }
+
+  searchInput.addEventListener('input', () => renderDropdown(searchInput.value));
+  searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
+  searchInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+
+  // close on outside click
+  document.addEventListener('click', e => {
+    if (!document.getElementById('userPickerWrap').contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  renderChips();
+  syncHidden();
+})();
+
+// ── Email template preview ───────────────────────────────────
+async function previewTemplate() {
+  const form = document.getElementById('previewForm');
+  const data = new FormData(form);
+  const resp = await fetch("{{ url_for('admin.email_config_workflow_preview') }}", {
+    method: 'POST',
+    body: data,
+  });
+  const json = await resp.json();
+  alert("Preview Subject:\n" + (json.subject || '') + "\n\nPreview Body:\n" + (json.body || ''));
+}
+setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+</script>
+{% endblock %}

@@ -12,6 +12,7 @@ not blocked by the SMTP handshake (which can take 15+ seconds).
 import logging
 import threading
 from flask import url_for, request, current_app
+from services import email_admin_service
 from services.email_service import send_email
 from services.do_pdf_service import should_attach_pdf, generate_order_pdf, pdf_filename
 
@@ -51,26 +52,56 @@ def send_do_status_email(
     """
     po_number = order.get("PO_Number", "")
 
-    subject = _build_subject(po_number, new_status)
-    body = _build_body(
-        po_number,
-        new_status,
+    workflow_cfg = email_admin_service.resolve_workflow_email_for_do(
+        order=order,
+        new_status=new_status,
         creator_first_name=creator_first_name,
         reject_reason=reject_reason,
         reject_remarks=reject_remarks,
     )
 
+    if workflow_cfg:
+        subject = workflow_cfg.get("subject") or _build_subject(po_number, new_status)
+        body = workflow_cfg.get("body") or _build_body(
+            po_number,
+            new_status,
+            creator_first_name=creator_first_name,
+            reject_reason=reject_reason,
+            reject_remarks=reject_remarks,
+        )
+        to_recipients = workflow_cfg.get("to") or DO_PRIMARY_TO
+        configured_cc = workflow_cfg.get("cc") or []
+        configured_bcc = workflow_cfg.get("bcc") or []
+        include_default_attachment = bool(workflow_cfg.get("include_default_attachment"))
+        configured_attachments = list(workflow_cfg.get("extra_attachments") or [])
+    else:
+        subject = _build_subject(po_number, new_status)
+        body = _build_body(
+            po_number,
+            new_status,
+            creator_first_name=creator_first_name,
+            reject_reason=reject_reason,
+            reject_remarks=reject_remarks,
+        )
+        to_recipients = DO_PRIMARY_TO
+        configured_cc = []
+        configured_bcc = DO_BCC
+        include_default_attachment = True
+        configured_attachments = []
+
     # Deduplicate and filter out empty / primary-TO addresses for CC
     cc_list = list({
         e.strip().lower()
-        for e in (extra_cc or [])
+        for e in (list(extra_cc or []) + list(configured_cc or []))
         if e and e.strip() and e.strip().lower() not in
-           {a.lower() for a in DO_PRIMARY_TO}
+           {a.lower() for a in to_recipients}
     })
 
+    bcc_list = list({e.strip().lower() for e in (configured_bcc or []) if e and e.strip()})
+
     # Generate PDF attachment (must happen here — needs Flask app context)
-    attachments = None
-    attach_pdf = should_attach_pdf(new_status)
+    attachments = list(configured_attachments)
+    attach_pdf = include_default_attachment and should_attach_pdf(new_status)
     app = current_app._get_current_object() if attach_pdf else None
 
     def _send():
@@ -82,20 +113,20 @@ def send_do_status_email(
                     pdf_bytes = generate_order_pdf(order)
                     if pdf_bytes:
                         fname = pdf_filename(po_number)
-                        attachments = [(fname, pdf_bytes, "pdf")]
+                        attachments.append((fname, pdf_bytes, "pdf"))
                         logger.info("PDF attachment ready: %s (%d bytes)", fname, len(pdf_bytes))
                     else:
                         logger.warning("PDF generation failed for %s — sending without attachment", po_number)
 
             send_email(
-                to=DO_PRIMARY_TO,
+                to=to_recipients,
                 subject=subject,
                 body_html=body,
                 cc=cc_list or None,
-                bcc=DO_BCC,
-                attachments=attachments,
+                bcc=bcc_list or None,
+                attachments=attachments or None,
             )
-            logger.info("DO email sent for %s -> %s (cc=%s)", po_number, new_status, cc_list)
+            logger.info("DO email sent for %s -> %s (to=%s cc=%s)", po_number, new_status, to_recipients, cc_list)
         except Exception:
             logger.exception(
                 "Background DO email failed for %s -> %s", po_number, new_status

@@ -539,7 +539,7 @@
         <a href="{{ url_for('dashboard.home') }}">Dashboard</a> <span>/</span>
         <a href="{{ url_for('webapp.index') }}">Web Application</a> <span>/</span>
         <a href="{{ url_for('delivery_orders.dashboard') }}">Delivery Order</a> <span>/</span>
-        <a href="{{ url_for('delivery_orders.order_list') }}">Orders</a> <span>/</span>
+        <a href="{{ back_to }}">Orders</a> <span>/</span>
         <span>{{ order.PO_Number }}</span>
       </div>
     </div>
@@ -584,6 +584,10 @@
         {# Show "Approve" button for Customer Manager approving PENDING CUSTOMER APPROVAL orders #}
         {% if order.Status == 'PENDING CUSTOMER APPROVAL' and is_do_customer_manager %}
         <button type="button" class="btn btn-primary btn-sm" onclick="doDetailSubmit(this.closest('form'))">Approve</button>
+        {% elif st == 'DRAFT' and is_do_creator and not order.line_items %}
+        <span title="Add at least one product">
+          <button type="button" class="btn btn-primary btn-sm" disabled style="opacity:.6;cursor:not-allowed;">Submit</button>
+        </span>
         {% else %}
         <button type="button" class="btn btn-primary btn-sm" onclick="doDetailSubmit(this.closest('form'))">Submit</button>
         {% endif %}
@@ -606,7 +610,7 @@
       {% endif %}
       {% endfor %}
 
-      <a href="{{ url_for('delivery_orders.order_list') }}" class="btn btn-ghost">
+      <a href="{{ back_to }}" class="btn btn-ghost">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
           style="width:16px;height:16px">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />

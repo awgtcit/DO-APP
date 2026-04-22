@@ -17,6 +17,10 @@ ADMIN_CONFIG_TABLES = [
     "Intra_Admin_WorkflowStatus",
     "Intra_Admin_WorkflowTransition",
     "Intra_Admin_RestrictedWords",
+    "Intra_Admin_SMTPConfig",
+    "Intra_Admin_WorkflowEmailSettings",
+    "Intra_Admin_WorkflowEmailRecipient",
+    "Intra_Admin_WorkflowEmailAttachment",
 ]
 
 # Reference/master data tables

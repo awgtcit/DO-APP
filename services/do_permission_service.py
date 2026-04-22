@@ -260,82 +260,138 @@ def can_edit_order(order: dict) -> bool:
     return str(order.get("Created_by")) == str(emp_id)
 
 
-def can_transition(order: dict, new_status: str) -> bool:
-    """
-    Check if the current user is allowed to perform a particular
-    status transition based on their DO role.
+def _normalize_required_role(role_key: str | None) -> str:
+    """Normalize admin-configured transition role values to module role keys."""
+    raw = (role_key or "").strip().lower().replace("-", "_").replace(" ", "_")
+    alias_map = {
+        "creator": DO_ROLE_CREATOR,
+        "do_creator": DO_ROLE_CREATOR,
+        "finance": DO_ROLE_FINANCE,
+        "do_finance": DO_ROLE_FINANCE,
+        "logistics": DO_ROLE_LOGISTICS,
+        "do_logistics": DO_ROLE_LOGISTICS,
+        "approver": DO_ROLE_APPROVER,
+        "do_approver": DO_ROLE_APPROVER,
+        "customer_manager": DO_ROLE_CUSTOMER_MANAGER,
+        "customers": DO_ROLE_CUSTOMER_MANAGER,
+        "do_customers": DO_ROLE_CUSTOMER_MANAGER,
+        "customer_manager_approver": DO_ROLE_CUSTOMER_MANAGER,
+        "do_customer_manager": DO_ROLE_CUSTOMER_MANAGER,
+    }
+    return alias_map.get(raw, raw)
 
-    Transition permissions:
-      DRAFT → SUBMITTED        : creator (owner) or approver
-      DRAFT → CANCELLED        : creator (owner) or approver
-      SUBMITTED → PRICE AGREED : finance or approver
-      SUBMITTED → NEED ATTACHMENT : finance or approver
-      SUBMITTED → REJECTED     : finance or approver
-      PRICE AGREED → CONFIRMED : logistics or approver
-      PRICE AGREED → CANCELLED : logistics or approver
-      CONFIRMED → NEED ATTACHMENT : finance or approver
-      NEED ATTACHMENT → CONFIRMED : logistics or approver
-      REJECTED → DRAFT         : creator (owner) or approver
-    """
-    current_status = order.get("Status", "")
+
+def _parse_required_role_and_condition(value: str | None) -> tuple[str, str]:
+    """Parse encoded transition role value: <role_key>|<condition_key>."""
+    raw = (value or "").strip()
+    if not raw:
+        return "", "always"
+
+    if "|" in raw:
+        role_part, cond_part = raw.split("|", 1)
+        role_key = _normalize_required_role(role_part)
+        condition_key = (cond_part or "always").strip().lower().replace("-", "_").replace(" ", "_") or "always"
+        return role_key, condition_key
+
+    return _normalize_required_role(raw), "always"
+
+
+def _special_transition_role_map() -> dict[tuple[str, str], tuple[str, str]]:
+    """Fallback routing used only when workflow transitions are not configured in DB."""
+    return {
+        # Ownership-based submit routing
+        ("DRAFT", "PENDING CUSTOMER APPROVAL"): (DO_ROLE_CREATOR, "ownership_required"),
+        # Customer manager approval lane
+        ("PENDING CUSTOMER APPROVAL", "SUBMITTED"): (DO_ROLE_CUSTOMER_MANAGER, "always"),
+        ("PENDING CUSTOMER APPROVAL", "REJECTED"): (DO_ROLE_CUSTOMER_MANAGER, "always"),
+        # Creator can pull back before customer manager acts
+        ("PENDING CUSTOMER APPROVAL", "DRAFT"): (DO_ROLE_CREATOR, "always"),
+    }
+
+
+def _get_transition_role_map(module_key: str = "delivery_orders") -> dict[tuple[str, str], tuple[str, str]]:
+    """Return {(from_status, to_status): (required_role_key, condition_key)} from workflow config."""
+    cached = getattr(g, "_do_transition_role_map", None)
+    if cached is not None:
+        return cached
+
+    role_map: dict[tuple[str, str], tuple[str, str]] = {}
+    try:
+        from services.admin_settings_service import get_workflow_transitions
+
+        for t in get_workflow_transitions(module_key):
+            src = (t.get("from_status") or "").strip().upper()
+            dst = (t.get("to_status") or "").strip().upper()
+            req_role, condition_key = _parse_required_role_and_condition(t.get("required_role"))
+            if src and dst and req_role:
+                role_map[(src, dst)] = (req_role, condition_key)
+    except Exception:
+        logger.exception("Failed to load workflow transition role map for %s", module_key)
+
+    # Backward-compatibility fallback only when DB has no workflow transitions.
+    if not role_map:
+        role_map = _special_transition_role_map()
+
+    g._do_transition_role_map = role_map
+    return role_map
+
+
+def get_my_action_statuses(module_key: str = "delivery_orders") -> list[str]:
+    """Return source statuses where current role is configured as required role."""
+    do_role = get_do_role()
+    role_map = _get_transition_role_map(module_key)
+
+    statuses: set[str] = set()
+    for (src, _dst), (req_role, _condition_key) in role_map.items():
+        if do_role == DO_ROLE_APPROVER:
+            statuses.add(src)
+        elif req_role == do_role:
+            statuses.add(src)
+
+    return sorted(statuses)
+
+
+def _transition_condition_met(order: dict, condition_key: str) -> bool:
+    cond = (condition_key or "always").strip().lower()
+    if cond in ("", "always", "none"):
+        return True
+
+    if cond == "ownership_required":
+        bill_o = (order.get("bill_to_ownership_sole_prop") or "").strip()
+        ship_o = (order.get("ship_to_ownership_sole_prop") or "").strip()
+        return bill_o in ("Yes", "N/A") or ship_o in ("Yes", "N/A")
+
+    # Unknown condition -> deny for safety.
+    return False
+
+
+def can_transition(order: dict, new_status: str) -> bool:
+    """Check if current user is allowed to perform a transition per configured workflow rules."""
+    current_status = (order.get("Status", "") or "").strip().upper()
+    new_status = (new_status or "").strip().upper()
     do_role = get_do_role()
     emp_id = session.get("emp_id")
     is_owner = str(order.get("Created_by")) == str(emp_id)
 
     transition = (current_status, new_status)
+    role_map = _get_transition_role_map("delivery_orders")
+    required = role_map.get(transition)
+    if not required:
+        return False
 
-    # Creator (owner) transitions
-    creator_transitions = {
-        ("DRAFT", "SUBMITTED"),
-        ("DRAFT", "CANCELLED"),
-        ("DRAFT", "PENDING CUSTOMER APPROVAL"),
-        ("REJECTED", "DRAFT"),
-        ("PENDING CUSTOMER APPROVAL", "DRAFT"),
-    }
+    required_role, condition_key = required
+    if not _transition_condition_met(order, condition_key):
+        return False
 
-    # Customer Manager transitions — approve/reject ownership-flagged orders
-    customer_manager_transitions = {
-        ("PENDING CUSTOMER APPROVAL", "SUBMITTED"),
-        ("PENDING CUSTOMER APPROVAL", "REJECTED"),
-    }
+    # Approver is super-role for workflow actions.
+    if do_role == DO_ROLE_APPROVER:
+        return True
 
-    # Logistics / approver transitions (confirm after price agreed)
-    logistics_transitions = {
-        ("PRICE AGREED", "CONFIRMED"),
-        ("PRICE AGREED", "CANCELLED"),
-        ("NEED ATTACHMENT", "CONFIRMED"),
-        ("CONFIRMED", "CUSTOMS DOCUMENT UPDATED"),
-    }
+    # Creator actions remain owner-scoped.
+    if required_role == DO_ROLE_CREATOR:
+        return do_role == DO_ROLE_CREATOR and is_owner
 
-    # Finance transitions (price agree, need attachment, reject)
-    finance_transitions = {
-        ("SUBMITTED", "PRICE AGREED"),
-        ("SUBMITTED", "NEED ATTACHMENT"),
-        ("SUBMITTED", "REJECTED"),
-        ("CONFIRMED", "NEED ATTACHMENT"),
-    }
-
-    # Creator transitions for post-delivery (sales team)
-    creator_post_delivery = {
-        ("CUSTOMS DOCUMENT UPDATED", "DELIVERED"),
-    }
-
-    if transition in creator_transitions:
-        return is_owner or do_role == DO_ROLE_APPROVER
-
-    if transition in customer_manager_transitions:
-        return do_role in (DO_ROLE_CUSTOMER_MANAGER, DO_ROLE_APPROVER)
-
-    if transition in logistics_transitions:
-        return do_role in (DO_ROLE_LOGISTICS, DO_ROLE_APPROVER)
-
-    if transition in finance_transitions:
-        return do_role in (DO_ROLE_FINANCE, DO_ROLE_APPROVER)
-
-    if transition in creator_post_delivery:
-        return do_role in (DO_ROLE_CREATOR, DO_ROLE_APPROVER)
-
-    return False
+    return do_role == required_role
 
 
 def get_allowed_transitions(order: dict) -> list[str]:
@@ -343,10 +399,11 @@ def get_allowed_transitions(order: dict) -> list[str]:
     Return the list of status transitions the current user is
     allowed to perform on the given order.
     """
-    from services.delivery_order_service import STATUS_FLOW
+    from services.admin_settings_service import get_status_flow
 
     current = order.get("Status", "")
-    possible = STATUS_FLOW.get(current, [])
+    flow = get_status_flow("delivery_orders")
+    possible = flow.get(current, [])
     return [s for s in possible if can_transition(order, s)]
 
 

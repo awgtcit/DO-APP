@@ -106,17 +106,36 @@
               <th>From</th>
               <th>To</th>
               <th>Role</th>
+              <th>Condition</th>
               <th style="text-align:right;">Action</th>
             </tr>
           </thead>
           <tbody>
             {% for t in transitions %}
+            {% set edit_form_id = 'wf_edit_' ~ t.id %}
             <tr>
               <td style="font-family:monospace;font-size:var(--text-xs);">{{ t.from_status }}</td>
               <td style="font-family:monospace;font-size:var(--text-xs);">{{ t.to_status }}</td>
-              <td>{{ available_roles.get(t.required_role, t.required_role) if t.required_role else '—' }}</td>
-              <td style="text-align:right;">
-                <form method="POST" action="{{ url_for('admin.workflow_transition_delete', transition_id=t.id) }}" style="display:inline;" onsubmit="return confirm('Remove this transition?');">
+              <td>
+                <select name="required_role" form="{{ edit_form_id }}" class="form-select" style="min-width:140px;" required>
+                  {% for rk, label in available_roles.items() %}
+                  <option value="{{ rk }}" {% if rk == (t.required_role_key or t.required_role) %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                <select name="condition_key" form="{{ edit_form_id }}" class="form-select" style="min-width:180px;" required>
+                  {% for ck, clabel in transition_conditions.items() %}
+                  <option value="{{ ck }}" {% if ck == (t.condition_key or 'always') %}selected{% endif %}>{{ clabel }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td style="text-align:right;white-space:nowrap;">
+                <form id="{{ edit_form_id }}" method="POST" action="{{ url_for('admin.workflow_transition_edit', transition_id=t.id) }}" style="display:inline-block;">
+                  <input type="hidden" name="module_key" value="{{ module_key }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Save</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin.workflow_transition_delete', transition_id=t.id) }}" style="display:inline-block;margin-left:6px;" onsubmit="return confirm('Remove this transition?');">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
@@ -124,7 +143,7 @@
             </tr>
             {% endfor %}
             {% if not transitions %}
-            <tr><td colspan="4" style="text-align:center;color:var(--slate-400);padding:var(--sp-6);">No transitions defined.</td></tr>
+            <tr><td colspan="5" style="text-align:center;color:var(--slate-400);padding:var(--sp-6);">No transitions defined.</td></tr>
             {% endif %}
           </tbody>
         </table>
@@ -135,7 +154,7 @@
         <h3 style="font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--slate-600);margin-bottom:var(--sp-3);">Add Transition</h3>
         <form method="POST" action="{{ url_for('admin.workflow_transition_add') }}">
           <input type="hidden" name="module_key" value="{{ module_key }}">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-2);margin-bottom:var(--sp-3);">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:var(--sp-2);margin-bottom:var(--sp-3);">
             <select name="from_status" class="form-select" required>
               <option value="">From…</option>
               {% for s in statuses %}
@@ -152,6 +171,11 @@
               <option value="">Select role…</option>
               {% for rk, label in available_roles.items() %}
               <option value="{{ rk }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <select name="condition_key" class="form-select" required>
+              {% for ck, clabel in transition_conditions.items() %}
+              <option value="{{ ck }}">{{ clabel }}</option>
               {% endfor %}
             </select>
           </div>

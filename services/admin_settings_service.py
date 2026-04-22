@@ -412,13 +412,57 @@ WORKFLOW_MODULES = {
     "it_support":      "IT Support",
 }
 
+WORKFLOW_CONDITIONS = {
+    "delivery_orders": {
+        "always": "Always",
+        "ownership_required": "Ownership route required (Bill/Ship ownership is Yes or N/A)",
+    },
+}
+
+
+def _decode_transition_required_role(value: str | None) -> tuple[str, str]:
+    raw = (value or "").strip()
+    if not raw:
+        return "", "always"
+    if "|" in raw:
+        role_key, condition_key = raw.split("|", 1)
+        return role_key.strip(), (condition_key.strip() or "always")
+    return raw, "always"
+
+
+def _encode_transition_required_role(role_key: str, condition_key: str | None) -> str:
+    rk = (role_key or "").strip()
+    ck = (condition_key or "always").strip() or "always"
+    if not rk:
+        return ""
+    if ck == "always":
+        return rk
+    return f"{rk}|{ck}"
+
 
 def get_workflow_statuses(module_key: str) -> list[dict]:
     return repo.get_workflow_statuses(module_key)
 
 
 def get_workflow_transitions(module_key: str) -> list[dict]:
-    return repo.get_workflow_transitions(module_key)
+    rows = repo.get_workflow_transitions(module_key)
+    role_labels = get_available_roles_for_module(module_key)
+    condition_labels = WORKFLOW_CONDITIONS.get(module_key, {"always": "Always"})
+
+    enriched: list[dict] = []
+    for row in rows:
+        item = dict(row)
+        role_key, condition_key = _decode_transition_required_role(item.get("required_role"))
+        item["required_role_key"] = role_key
+        item["condition_key"] = condition_key
+        item["required_role_label"] = role_labels.get(role_key, role_key or "—")
+        item["condition_label"] = condition_labels.get(condition_key, condition_key)
+        enriched.append(item)
+    return enriched
+
+
+def get_workflow_transition_conditions(module_key: str) -> dict[str, str]:
+    return dict(WORKFLOW_CONDITIONS.get(module_key, {"always": "Always"}))
 
 
 def add_workflow_status(module_key: str, data: dict) -> int:
@@ -445,16 +489,22 @@ def delete_workflow_status(status_id: int) -> None:
 
 
 def add_workflow_transition(module_key: str, data: dict) -> int:
+    encoded_role = _encode_transition_required_role(
+        data.get("required_role") or "",
+        data.get("condition_key") or "always",
+    )
     return repo.add_workflow_transition(
         module_key=module_key,
         from_status=data["from_status"],
         to_status=data["to_status"],
-        required_role=data.get("required_role") or None,
+        required_role=encoded_role or None,
     )
 
 
-def update_workflow_transition_role(transition_id: int, required_role: str) -> None:
-    repo.update_workflow_transition_role(transition_id, required_role)
+def update_workflow_transition_role(transition_id: int, required_role: str,
+                                    condition_key: str = "always") -> None:
+    encoded_role = _encode_transition_required_role(required_role, condition_key)
+    repo.update_workflow_transition_role(transition_id, encoded_role)
 
 
 def delete_workflow_transition(transition_id: int) -> None:
@@ -465,21 +515,6 @@ def get_status_flow(module_key: str) -> dict[str, list[str]]:
     """Get STATUS_FLOW dict from DB with fallback to hardcoded."""
     flow = repo.get_workflow_flow_dict(module_key)
     if flow:
-        if module_key == "delivery_orders":
-            normalized = {k: list(v) for k, v in flow.items()}
-
-            # Keep customer-manager approval path available even if older DB config
-            # does not include it yet.
-            draft_targets = normalized.setdefault("DRAFT", [])
-            if "PENDING CUSTOMER APPROVAL" not in draft_targets:
-                draft_targets.append("PENDING CUSTOMER APPROVAL")
-
-            pending_targets = normalized.setdefault("PENDING CUSTOMER APPROVAL", [])
-            for target in ("SUBMITTED", "REJECTED", "DRAFT"):
-                if target not in pending_targets:
-                    pending_targets.append(target)
-
-            return normalized
         return flow
     # Fallback to hardcoded defaults
     return _HARDCODED_FLOWS.get(module_key, {})

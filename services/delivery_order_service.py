@@ -32,6 +32,7 @@ from repos.delivery_order_repo import (
 )
 from services.do_permission_service import (
     get_do_role,
+    get_my_action_statuses,
     get_allowed_transitions,
     can_transition,
     can_edit_order,
@@ -119,6 +120,51 @@ def do_dashboard_stats() -> dict:
     if emp_id:
         return get_dashboard_stats_for_user(emp_id)
     return get_dashboard_stats()
+
+
+def get_dashboard_action_context() -> dict:
+    """Return role-aware dashboard action hints and optional action queue rows."""
+    role = get_do_role()
+    action_statuses = get_my_action_statuses("delivery_orders")
+
+    queue_rows: list[dict] = []
+    queue_title = "My Action Orders"
+    show_action_queue = bool(action_statuses)
+
+    merged: dict[int, dict] = {}
+    for st in action_statuses:
+        rows, _ = list_orders(status=st, page=1, per_page=100)
+        for row in rows:
+            rid = int(row.get("id") or 0)
+            if rid:
+                merged[rid] = row
+
+    queue_rows = sorted(merged.values(), key=lambda r: int(r.get("id") or 0), reverse=True)[:25]
+
+    if role == DO_ROLE_CREATOR:
+        queue_title = "My Action Orders (Draft + Rejected)"
+    elif role == DO_ROLE_CUSTOMER_MANAGER:
+        queue_title = "My Action Orders (Pending Customer Approval)"
+    elif role == DO_ROLE_FINANCE:
+        queue_title = "My Action Orders (Submitted + Confirmed)"
+    elif role == DO_ROLE_LOGISTICS:
+        queue_title = "My Action Orders (Price Agreed / Need Attachment / Customs Updated)"
+    elif role == DO_ROLE_APPROVER:
+        queue_title = "My Action Orders (All Workflow Steps)"
+
+    queue_empty_text = (
+        f"No orders found for your action statuses: {', '.join(action_statuses)}."
+        if action_statuses else
+        "No action orders found."
+    )
+
+    return {
+        "action_statuses": action_statuses,
+        "action_queue_rows": queue_rows,
+        "action_queue_title": queue_title,
+        "show_action_queue": show_action_queue,
+        "action_queue_empty_text": queue_empty_text,
+    }
 
 
 # ── List ────────────────────────────────────────────────────────
@@ -345,9 +391,14 @@ def change_order_status(
     current = order.get("Status", "")
     flow = _get_status_flow()
     allowed = flow.get(current, [])
+    requested_status = (new_status or "").strip().upper()
 
     if new_status not in allowed:
         return False, ["Status transition not allowed."], ""
+
+    # Permission check on the originally-requested status (before any internal redirect).
+    if not can_transition(order, new_status):
+        return False, ["You lack permission for this transition."], ""
 
     # Ownership routing: creator submitting DRAFT → check if Customer Manager approval needed.
     # Use the already-JOINed ownership fields from the order dict to avoid an extra DB call
@@ -358,12 +409,9 @@ def change_order_status(
         if bill_o in ("Yes", "N/A") or ship_o in ("Yes", "N/A"):
             new_status = "PENDING CUSTOMER APPROVAL"
 
-    # Permission check
-    if not can_transition(order, new_status):
-        return False, ["You lack permission for this transition."], ""
-
-    # Mandatory-field gate for SUBMITTED
-    if new_status == "SUBMITTED":
+    # Mandatory-field gate for creator submit requests, even if workflow reroutes
+    # internally to customer approval first.
+    if requested_status == "SUBMITTED":
         errors = validate_order_for_submit(order)
         if errors:
             return False, errors, ""

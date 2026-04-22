@@ -178,6 +178,27 @@
     background: rgba(255, 255, 255, 0.92);
   }
 
+  .kpi-card--action {
+    border: 1px solid rgba(0, 102, 51, 0.55);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2), 0 8px 30px rgba(16, 185, 129, 0.18);
+    background: linear-gradient(180deg, rgba(236, 253, 245, 0.96), rgba(255, 255, 255, 0.92));
+  }
+
+  .kpi-card__action-tag {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: #065f46;
+    background: #d1fae5;
+    border: 1px solid #86efac;
+    padding: 2px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+
   .kpi-card__top {
     display: flex;
     align-items: flex-start;
@@ -417,8 +438,6 @@
     stroke: #d97706;
   }
 
-  .overview-stat__info {}
-
   .overview-stat__value {
     font-size: 28px;
     font-weight: 800;
@@ -475,6 +494,39 @@
   .mgmt-btn svg {
     width: 18px;
     height: 18px;
+  }
+
+  .action-queue-table .data-table td,
+  .action-queue-table .data-table th {
+    white-space: nowrap;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+  }
+
+  .status-pill--draft {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .status-pill--rejected {
+    background: #fecaca;
+    color: #991b1b;
+  }
+
+  .clickable-row {
+    cursor: pointer;
+  }
+
+  .clickable-row:hover {
+    background: rgba(219, 234, 254, .35) !important;
   }
 
   /* Section spacing */
@@ -603,6 +655,7 @@
   <!-- KPI Cards -->
   {% set total = stats.total or 0 %}
   {% set safe_total = total if total > 0 else 1 %}
+  {% set action_statuses = action_statuses|default([]) %}
   <div class="kpi-cards-grid">
 
     <!-- Total Orders -->
@@ -631,7 +684,8 @@
     <!-- Draft Orders -->
     {% set drafts = stats.drafts or 0 %}
     {% set drafts_pct = ((drafts / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='DRAFT') }}" class="kpi-card kpi--drafts">
+    <a href="{{ url_for('delivery_orders.order_list', status='DRAFT') }}" class="kpi-card kpi--drafts {% if 'DRAFT' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'DRAFT' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -656,7 +710,8 @@
     <!-- Submitted Orders -->
     {% set submitted = stats.submitted or 0 %}
     {% set submitted_pct = ((submitted / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='SUBMITTED') }}" class="kpi-card kpi--submitted">
+    <a href="{{ url_for('delivery_orders.order_list', status='SUBMITTED') }}" class="kpi-card kpi--submitted {% if 'SUBMITTED' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'SUBMITTED' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -681,7 +736,8 @@
     <!-- Confirmed Orders -->
     {% set confirmed = stats.confirmed or 0 %}
     {% set confirmed_pct = ((confirmed / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='CONFIRMED') }}" class="kpi-card kpi--confirmed">
+    <a href="{{ url_for('delivery_orders.order_list', status='CONFIRMED') }}" class="kpi-card kpi--confirmed {% if 'CONFIRMED' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'CONFIRMED' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -707,7 +763,8 @@
     {% set customs_updated = stats.customs_updated or 0 %}
     {% set customs_pct = ((customs_updated / safe_total) * 100)|round|int %}
     <a href="{{ url_for('delivery_orders.order_list', status='CUSTOMS DOCUMENT UPDATED') }}"
-      class="kpi-card kpi--customs-updated">
+      class="kpi-card kpi--customs-updated {% if 'CUSTOMS DOCUMENT UPDATED' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'CUSTOMS DOCUMENT UPDATED' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -758,7 +815,8 @@
     <!-- Price Agreed -->
     {% set price_agreed = stats.price_agreed or 0 %}
     {% set price_pct = ((price_agreed / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='PRICE AGREED') }}" class="kpi-card kpi--price-agreed">
+    <a href="{{ url_for('delivery_orders.order_list', status='PRICE AGREED') }}" class="kpi-card kpi--price-agreed {% if 'PRICE AGREED' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'PRICE AGREED' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -783,7 +841,8 @@
     <!-- Need Attachment -->
     {% set need_attach = stats.need_attach or 0 %}
     {% set attach_pct = ((need_attach / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='NEED ATTACHMENT') }}" class="kpi-card kpi--need-attach">
+    <a href="{{ url_for('delivery_orders.order_list', status='NEED ATTACHMENT') }}" class="kpi-card kpi--need-attach {% if 'NEED ATTACHMENT' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'NEED ATTACHMENT' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -810,7 +869,8 @@
     <!-- Pending Customer Approval -->
     {% set pending_approval = stats.pending_customer_approval or 0 %}
     {% set pending_approval_pct = ((pending_approval / safe_total) * 100)|round|int %}
-    <a href="{{ url_for('delivery_orders.order_list', status='PENDING CUSTOMER APPROVAL') }}" class="kpi-card kpi--pending-approval">
+    <a href="{{ url_for('delivery_orders.order_list', status='PENDING CUSTOMER APPROVAL') }}" class="kpi-card kpi--pending-approval {% if 'PENDING CUSTOMER APPROVAL' in action_statuses %}kpi-card--action{% endif %}">
+      {% if 'PENDING CUSTOMER APPROVAL' in action_statuses %}<span class="kpi-card__action-tag">Action</span>{% endif %}
       <div class="kpi-card__top">
         <div class="kpi-card__icon">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -834,46 +894,53 @@
     {% endif %}
   </div>
 
-  <!-- Overview Section -->
+  {% if show_action_queue %}
   <div class="do-section">
-    <div class="glass-card">
-      <div class="overview-title">Overview</div>
-      <div class="overview-grid">
-        <div class="overview-stat">
-          <div class="overview-stat__icon overview-stat__icon--red">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-          </div>
-          <div class="overview-stat__info">
-            <div class="overview-stat__value">{{ stats.rejected or 0 }}</div>
-            <div class="overview-stat__label">Rejected</div>
-          </div>
-          {% set rejected = stats.rejected or 0 %}
-          {% set rej_pct = ((rejected / safe_total) * 100)|round|int %}
-          <span class="overview-stat__pct">{{ rej_pct }}% &rsaquo;</span>
-        </div>
-        <div class="overview-stat">
-          <div class="overview-stat__icon overview-stat__icon--amber">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-            </svg>
-          </div>
-          <div class="overview-stat__info">
-            <div class="overview-stat__value">{{ stats.cancelled or 0 }}</div>
-            <div class="overview-stat__label">Cancelled</div>
-          </div>
-          {% set cancelled = stats.cancelled or 0 %}
-          {% set can_pct = ((cancelled / safe_total) * 100)|round|int %}
-          <span class="overview-stat__pct">{{ can_pct }}% &rsaquo;</span>
-        </div>
+    <div class="glass-card action-queue-table">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div class="overview-title" style="margin-bottom:0;">{{ action_queue_title or 'My Action Orders' }}</div>
+        <a class="do-btn-outline" href="{{ url_for('delivery_orders.order_list', status='ALL') }}">View All</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Order Date</th>
+              <th>Order No</th>
+              <th>On Behalf Of</th>
+              <th>Loading Date</th>
+              <th>Bill To</th>
+              <th>Created by</th>
+              <th style="text-align:center">Items</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if action_queue_rows %}
+            {% for o in action_queue_rows %}
+            <tr class="clickable-row" data-href="{{ url_for('delivery_orders.order_detail', order_id=o.id) }}" onclick="window.location=this.dataset.href">
+              <td>{{ o.order_date or '—' }}</td>
+              <td style="font-weight:700;color:#065f46;">{{ o.order_no or '—' }}</td>
+              <td>{{ o.on_behalf_of or '—' }}</td>
+              <td>{{ o.loading_date or '—' }}</td>
+              <td>{{ o.bill_to or '—' }}</td>
+              <td>{{ o.created_by or '—' }}</td>
+              <td style="text-align:center"><span class="badge badge--brand">{{ o.item_count|default(0) }}</span></td>
+              {% set st = o.status|default('')|upper %}
+              <td><span class="status-pill status-pill--{{ st|lower|replace(' ', '-') }}">{{ st }}</span></td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="8" style="text-align:center;padding:22px;color:#64748b;">{{ action_queue_empty_text or 'No action orders found for your profile.' }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
+  {% endif %}
   {% endif %}{# end has_any_order_role #}
 
   <!-- Management Section (role-gated per button) -->

@@ -16,6 +16,7 @@ from werkzeug.routing import BuildError
 
 from auth.middleware import login_required, role_required
 from services import admin_settings_service as svc
+from services import email_admin_service
 from rules.admin_settings_rules import (
     validate_restricted_word,
     validate_workflow_status,
@@ -319,6 +320,7 @@ def workflow():
     statuses = svc.get_workflow_statuses(module_key)
     transitions = svc.get_workflow_transitions(module_key)
     available_roles = svc.get_available_roles_for_module(module_key)
+    transition_conditions = svc.get_workflow_transition_conditions(module_key)
     return render_template(
         "admin_settings/workflow.html",
         module_key=module_key,
@@ -326,6 +328,7 @@ def workflow():
         statuses=statuses,
         transitions=transitions,
         available_roles=available_roles,
+        transition_conditions=transition_conditions,
     )
 
 
@@ -387,6 +390,7 @@ def workflow_transition_add():
         "from_status": request.form.get("from_status", "").strip(),
         "to_status": request.form.get("to_status", "").strip(),
         "required_role": request.form.get("required_role", "").strip(),
+        "condition_key": request.form.get("condition_key", "always").strip() or "always",
     }
     errors = validate_workflow_transition(data)
     if errors:
@@ -407,9 +411,10 @@ def workflow_transition_add():
 def workflow_transition_edit(transition_id):
     module_key = request.form.get("module_key", "delivery_orders")
     required_role = request.form.get("required_role", "").strip()
+    condition_key = request.form.get("condition_key", "always").strip() or "always"
     if required_role:
-        svc.update_workflow_transition_role(transition_id, required_role)
-        flash("Transition role updated.", "success")
+        svc.update_workflow_transition_role(transition_id, required_role, condition_key)
+        flash("Transition updated.", "success")
     else:
         flash("Role is required.", "danger")
     return redirect(url_for("admin.workflow", module=module_key))
@@ -423,6 +428,138 @@ def workflow_transition_delete(transition_id):
     svc.delete_workflow_transition(transition_id)
     flash("Transition removed.", "success")
     return redirect(url_for("admin.workflow", module=module_key))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  EMAIL CONFIGURATION (SMTP + WORKFLOW EMAIL)
+# ═══════════════════════════════════════════════════════════════
+
+@admin_settings_bp.route("/email-config")
+@login_required
+@role_required("admin", "it_admin")
+def email_config():
+    module_key = request.args.get("module", "delivery_orders")
+    status_key = (request.args.get("status", "") or "").strip().upper()
+    statuses = svc.get_workflow_statuses(module_key)
+    if not status_key and statuses:
+        confirmed = next((s for s in statuses if (s.get("status_key") or "").upper() == "CONFIRMED"), None)
+        status_key = (confirmed or statuses[0]).get("status_key") or ""
+    users = email_admin_service.get_recipient_users()
+    actor = session.get("emp_id") or 0
+
+    try:
+        if module_key == "delivery_orders":
+            email_admin_service.ensure_default_do_confirmation_config(actor)
+        smtp_configs = email_admin_service.get_smtp_configs()
+        settings = email_admin_service.list_workflow_email_settings(module_key)
+        selected_setting = (
+            email_admin_service.get_workflow_email_setting(module_key, status_key)
+            if status_key else None
+        )
+    except Exception as exc:
+        logger.exception("Email configuration load failed")
+        flash(f"Email configuration storage is not ready: {exc}", "warning")
+        smtp_configs = []
+        settings = []
+        selected_setting = None
+
+    active_smtp = next((x for x in smtp_configs if x.get("is_active")), smtp_configs[0] if smtp_configs else None)
+    return render_template(
+        "admin_settings/email_config.html",
+        module_key=module_key,
+        workflow_modules=email_admin_service.WORKFLOW_EMAIL_MODULES,
+        statuses=statuses,
+        settings=settings,
+        selected_setting=selected_setting,
+        status_key=status_key,
+        smtp_configs=smtp_configs,
+        active_smtp=active_smtp,
+        users=users,
+    )
+
+
+@admin_settings_bp.route("/email-config/smtp/save", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_smtp_save():
+    actor = session.get("emp_id") or 0
+    ok, errors, _ = email_admin_service.save_smtp_config(request.form, actor)
+    if not ok:
+        for err in errors:
+            flash(err, "danger")
+    else:
+        flash("SMTP configuration saved.", "success")
+    return redirect(url_for("admin.email_config", module="delivery_orders", status="CONFIRMED"))
+
+
+@admin_settings_bp.route("/email-config/smtp/test", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_smtp_test():
+    actor = session.get("emp_id") or 0
+    config_id = request.form.get("config_id", type=int) or 0
+    test_email = (request.form.get("test_email") or "").strip()
+    ok, message = email_admin_service.test_smtp_config(config_id, test_email, actor)
+    flash(message, "success" if ok else "danger")
+    return redirect(url_for("admin.email_config"))
+
+
+@admin_settings_bp.route("/email-config/workflow/save", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_workflow_save():
+    actor = session.get("emp_id") or 0
+    ok, errors, setting_id = email_admin_service.save_workflow_email_setting(request.form, actor)
+    module_key = (request.form.get("module_key") or "delivery_orders").strip()
+    status_key = (request.form.get("status_key") or "").strip().upper()
+    if not ok:
+        for err in errors:
+            flash(err, "danger")
+    else:
+        flash("Workflow email settings saved.", "success")
+
+    # Optional attachment upload along with save
+    file_obj = request.files.get("attachment_file")
+    if ok and setting_id and file_obj and file_obj.filename:
+        is_editable = request.form.get("attachment_is_editable") == "1"
+        att_ok, att_msg = email_admin_service.save_attachment(file_obj, int(setting_id), is_editable, actor)
+        flash(att_msg, "success" if att_ok else "danger")
+
+    return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+
+@admin_settings_bp.route("/email-config/workflow/attachment/<int:attachment_id>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_attachment_delete(attachment_id: int):
+    actor = session.get("emp_id") or 0
+    module_key = (request.form.get("module_key") or "delivery_orders").strip()
+    status_key = (request.form.get("status_key") or "").strip().upper()
+    ok, message = email_admin_service.delete_attachment(attachment_id, actor)
+    flash(message, "success" if ok else "danger")
+    return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+
+@admin_settings_bp.route("/email-config/workflow/preview", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_workflow_preview():
+    subject_template = (request.form.get("subject_template") or "").strip()
+    body_template = (request.form.get("body_template") or "").strip()
+    sample_context = {
+        "do_number": "AWTFZC/Apr/26/DO6062",
+        "customer_name": "Sample Customer",
+        "date": "2026-04-22",
+        "status": (request.form.get("status_key") or "SUBMITTED").strip().upper(),
+        "created_by": session.get("user_name") or "Creator",
+        "approved_by": "Approver",
+        "order_link": request.host_url.rstrip("/") + url_for("delivery_orders.order_list"),
+        "reject_reason": "",
+        "reject_remarks": "",
+    }
+    preview_subject = email_admin_service.render_template_text(subject_template, sample_context)
+    preview_body = email_admin_service.render_template_text(body_template, sample_context)
+    return jsonify({"subject": preview_subject, "body": preview_body})
 
 
 # ═══════════════════════════════════════════════════════════════

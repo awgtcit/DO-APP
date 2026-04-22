@@ -199,7 +199,7 @@
         {% if orders %}
         {% for o in orders %}
         <tr class="clickable-row"
-          onclick="window.location='{{ url_for('delivery_orders.order_detail', order_id=o.id) }}'">
+          onclick="window.location='{{ url_for('delivery_orders.order_detail', order_id=o.id, return_to=request.full_path) }}'">
           <td>{{ o.order_date or '—' }}</td>
           <td style="font-weight:var(--font-semibold);color:var(--brand-700);">{{ o.order_no or '—' }}</td>
           <td>{{ o.on_behalf_of or '—' }}</td>

@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 from auth.middleware import login_required
 from services.delivery_order_service import (
     do_dashboard_stats,
+    get_dashboard_action_context,
     list_orders,
     get_order_detail,
     get_form_lookups,
@@ -121,7 +122,8 @@ def dashboard():
     """Delivery Order dashboard with KPI bubbles."""
     stats = do_dashboard_stats()
     ctx = get_do_context()
-    return render_template("delivery_orders/dashboard.html", stats=stats, **ctx)
+    action_ctx = get_dashboard_action_context()
+    return render_template("delivery_orders/dashboard.html", stats=stats, **ctx, **action_ctx)
 
 
 # ── Order list ──────────────────────────────────────────────────
@@ -240,8 +242,12 @@ def order_detail(order_id):
         flash("Order not found.", "danger")
         return redirect(url_for("delivery_orders.order_list"))
 
+    back_to = request.args.get("return_to", "").strip()
+    if not back_to.startswith("/delivery-orders/orders"):
+        back_to = url_for("delivery_orders.order_list")
+
     ctx = get_do_context()
-    return render_template("delivery_orders/detail.html", order=order, **ctx)
+    return render_template("delivery_orders/detail.html", order=order, back_to=back_to, **ctx)
 
 
 # ── Edit order ──────────────────────────────────────────────────

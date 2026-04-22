@@ -97,7 +97,8 @@ def create_app():
         {'code': 'IT_SUPPORT',      'name': 'IT Support',         'url': '/it-support',      'icon': 'bi-headset',        'display_order': 8,  'category': 'IT_SUPPORT'},
         {'code': 'ISP',             'name': 'ISP Admin',          'url': '/isp-admin',       'icon': 'bi-shield-check',   'display_order': 9,  'category': 'ISP'},
         {'code': 'ADMIN',           'name': 'Admin Panel',        'url': '/admin',           'icon': 'bi-gear',           'display_order': 10, 'category': 'ADMIN'},
-        {'code': 'AUDIT_LOG',       'name': 'Audit Log',          'url': '/admin/audit',     'icon': 'bi-clock-history',  'display_order': 11, 'category': 'AUDIT_LOG'},
+        {'code': 'EMAIL_CONFIG',    'name': 'Email Config',       'url': '/admin/email-config', 'icon': 'bi-envelope-gear', 'display_order': 11, 'category': 'ADMIN'},
+        {'code': 'AUDIT_LOG',       'name': 'Audit Log',          'url': '/admin/audit',     'icon': 'bi-clock-history',  'display_order': 12, 'category': 'AUDIT_LOG'},
     ]
 
     app_id = app.config.get('AUTH_APP_APPLICATION_ID', '')
