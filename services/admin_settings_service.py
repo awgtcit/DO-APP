@@ -415,7 +415,12 @@ WORKFLOW_MODULES = {
 WORKFLOW_CONDITIONS = {
     "delivery_orders": {
         "always": "Always",
+        "standard_submit": "Finance lane submit (initial submit, finance rejection, or logistics price change)",
         "ownership_required": "Ownership route required (Bill/Ship ownership is Yes or N/A)",
+        "rejected_by_finance": "Resubmission after Finance rejection",
+        "from_rejected_by_logistics": "From REJECTED BY LOGISTICS",
+        "rejected_by_logistics_no_price_change": "Resubmission after Logistics rejection with no price change",
+        "rejected_by_logistics_with_price_change": "Resubmission after Logistics rejection with price change",
     },
 }
 
@@ -522,10 +527,10 @@ def get_status_flow(module_key: str) -> dict[str, list[str]]:
 
 _HARDCODED_FLOWS = {
     "delivery_orders": {
-        "DRAFT":           ["SUBMITTED", "PENDING CUSTOMER APPROVAL", "CANCELLED"],
+        "DRAFT":           ["SUBMITTED", "PRICE AGREED", "PENDING CUSTOMER APPROVAL", "CANCELLED"],
         "PENDING CUSTOMER APPROVAL": ["SUBMITTED", "REJECTED", "DRAFT"],
         "SUBMITTED":       ["PRICE AGREED", "NEED ATTACHMENT", "REJECTED"],
-        "PRICE AGREED":    ["CONFIRMED", "CANCELLED"],
+        "PRICE AGREED":    ["CONFIRMED", "REJECTED", "CANCELLED"],
         "CONFIRMED":       ["NEED ATTACHMENT", "CUSTOMS DOCUMENT UPDATED"],
         "CUSTOMS DOCUMENT UPDATED": ["DELIVERED"],
         "DELIVERED":       [],

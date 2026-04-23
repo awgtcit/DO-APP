@@ -572,9 +572,9 @@
       {% for t in order.allowed_transitions|default([]) %}
       {% if t in ('CUSTOMS DOCUMENT UPDATED', 'DELIVERED') %}
       {# These transitions are triggered by post-delivery forms, not buttons #}
-      {% elif t == 'REJECTED' %}
+      {% elif t.startswith('REJECTED') %}
       <button type="button" class="btn btn-danger btn-sm"
-        onclick="document.getElementById('rejectModal').classList.add('active')">Reject</button>
+        onclick="openRejectModal('{{ t }}')">Reject</button>
       {% else %}
       <form method="post" action="{{ url_for('delivery_orders.change_status', order_id=order.id) }}"
         style="display:inline">
@@ -594,6 +594,8 @@
         {% elif t == 'CONFIRMED' %}
         <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Confirm this order?')"
           style="background:#15803d;border-color:#15803d;">Confirm</button>
+        {% elif t == 'PRICE AGREED' and st == 'DRAFT' and is_do_creator %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="doDetailSubmit(this.closest('form'))">Submit</button>
         {% elif t == 'PRICE AGREED' %}
         <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Mark as Price Agreed?')"
           style="background:#006633;border-color:#006633;">Price Agreed</button>
@@ -625,6 +627,52 @@
   <div class="reject-info">
     <strong style="color:#991b1b;">Reject Reason:</strong> {{ order.Reject_Reason or 'Not specified' }}
     {% if order.Reject_Remarks %}<br><strong>Remarks:</strong> {{ order.Reject_Remarks }}{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Transaction records -->
+  {% if order.status_history %}
+  <div class="card" style="margin-top:var(--sp-4)">
+    <div class="card__header">
+      <span class="card__title">Transaction Records</span>
+    </div>
+    <div class="card__body" style="overflow:auto;">
+      <table class="items-teal" style="min-width:900px;">
+        <thead>
+          <tr>
+            <th style="width:150px;">When</th>
+            <th style="width:180px;">Action</th>
+            <th style="width:140px;">From</th>
+            <th style="width:140px;">To</th>
+            <th style="width:180px;">Actor</th>
+            <th style="width:120px;">Emp ID</th>
+            <th style="width:140px;">Role</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in order.status_history %}
+          <tr>
+            <td>{{ h.created_on.strftime('%d-%b-%Y %H:%M') if h.created_on else '—' }}</td>
+            <td>{{ h.action_type or 'STATUS_CHANGE' }}</td>
+            <td>{{ h.from_status or '—' }}</td>
+            <td>{{ h.to_status or '—' }}</td>
+            <td>{{ h.actor_name or '—' }}</td>
+            <td style="text-align:center;">{{ h.actor_emp_id or '—' }}</td>
+            <td>{{ h.actor_role or '—' }}</td>
+            <td>
+              {% if h.reject_reason %}
+                Reject: {{ h.reject_reason }}
+                {% if h.reject_remarks %}<br>Notes: {{ h.reject_remarks }}{% endif %}
+              {% else %}
+                {{ h.remarks or '—' }}
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% endif %}
 
@@ -864,10 +912,10 @@
           <div class="add-item-grid">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Product</label>
-              <select name="product_id" class="form-select ss-target" required>
+              <select name="product_id" id="addItemProduct" class="form-select ss-target" required>
                 <option value="">Select Product</option>
                 {% for p in order.get('products', []) %}
-                <option value="{{ p.Product_ID }}">{{ p.Name }}</option>
+                <option value="{{ p.Product_ID }}" data-uom="{{ p.Unit_Of_Measure or '' }}">{{ p.Product_ID }} | {{ p.Name }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -876,7 +924,11 @@
               <input type="number" name="quantity" class="form-input" step="0.01" min="0" required>
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Unit Price</label>
+              <label class="form-label">Unit of Measure</label>
+              <input type="text" id="addItemUnitOfMeasure" class="form-input" placeholder="Auto" readonly>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Unit Price ({{ order.DOCurrency or 'USD' }})</label>
               <input type="number" name="unit_price" class="form-input" step="0.01" min="0" required>
             </div>
             <div class="form-group" style="margin-bottom:0">
@@ -1107,10 +1159,10 @@
   <div class="modal-box">
     <h3 style="color:#991b1b;">Reject Order</h3>
     <form method="post" action="{{ url_for('delivery_orders.change_status', order_id=order.id) }}">
-      <input type="hidden" name="new_status" value="REJECTED">
+      <input type="hidden" name="new_status" id="rejectModalStatus" value="REJECTED">
       <div class="form-group">
         <label class="form-label">Reason *</label>
-        <select name="reject_reason" class="form-select" required>
+        <select name="reject_reason" class="form-select ss-target" required>
           <option value="">Select a reason...</option>
           {% for reason in reject_reasons %}
           <option value="{{ reason }}">{{ reason }}</option>
@@ -1132,9 +1184,28 @@
 </div>
 
 <script>
+  (function () {
+    var productSelect = document.getElementById('addItemProduct');
+    var uomInput = document.getElementById('addItemUnitOfMeasure');
+    if (!productSelect || !uomInput) return;
+
+    function syncUnitOfMeasure() {
+      var selected = productSelect.options[productSelect.selectedIndex];
+      uomInput.value = selected ? (selected.getAttribute('data-uom') || '') : '';
+    }
+
+    productSelect.addEventListener('change', syncUnitOfMeasure);
+    syncUnitOfMeasure();
+  })();
+
   document.getElementById('rejectModal').addEventListener('click', function (e) {
     if (e.target === this) this.classList.remove('active');
   });
+
+  function openRejectModal(targetStatus) {
+    document.getElementById('rejectModalStatus').value = targetStatus || 'REJECTED';
+    document.getElementById('rejectModal').classList.add('active');
+  }
 
   /* ── Multi-file picker with list & remove ── */
   var _fileLists = { logistics: [], sales: [] };

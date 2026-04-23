@@ -892,6 +892,31 @@
       </div>
     </a>
     {% endif %}
+
+    <!-- Rejected Orders (all REJECTED* variants) -->
+    {% set rejected = stats.rejected or 0 %}
+    {% set rejected_pct = ((rejected / safe_total) * 100)|round|int %}
+    <a href="{{ url_for('delivery_orders.order_list', status='REJECTED') }}" class="kpi-card kpi--rejected">
+      <div class="kpi-card__top">
+        <div class="kpi-card__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div class="kpi-card__info">
+          <div class="kpi-card__value">{{ rejected }}</div>
+          <div class="kpi-card__label">Rejected Orders</div>
+        </div>
+      </div>
+      <div class="kpi-card__bar-wrap">
+        <div class="kpi-card__bar">
+          <div class="kpi-card__bar-fill" style="width:{{ rejected_pct }}%;"></div>
+        </div>
+        <span class="kpi-card__pct">{{ rejected_pct }}%</span>
+      </div>
+    </a>
   </div>
 
   {% if show_action_queue %}

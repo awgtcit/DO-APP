@@ -22,7 +22,7 @@ def get_dashboard_stats() -> dict:
             SUM(CASE WHEN Status = 'CONFIRMED'       THEN 1 ELSE 0 END) AS confirmed,
             SUM(CASE WHEN Status = 'CUSTOMS DOCUMENT UPDATED' THEN 1 ELSE 0 END) AS customs_updated,
             SUM(CASE WHEN Status = 'DELIVERED'       THEN 1 ELSE 0 END) AS delivered,
-            SUM(CASE WHEN Status = 'REJECTED'        THEN 1 ELSE 0 END) AS rejected,
+            SUM(CASE WHEN Status LIKE 'REJECTED%'    THEN 1 ELSE 0 END) AS rejected,
             SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled,
             SUM(CASE WHEN Status = 'PENDING CUSTOMER APPROVAL' THEN 1 ELSE 0 END) AS pending_customer_approval
         FROM Intra_SalesOrder
@@ -57,8 +57,12 @@ def get_all_orders(
     params: list = []
 
     if status and status != "ALL":
-        where_clauses.append("t1.Status = ?")
-        params.append(status)
+        normalized_status = (status or "").strip().upper()
+        if normalized_status == "REJECTED":
+            where_clauses.append("t1.Status LIKE 'REJECTED%'")
+        else:
+            where_clauses.append("t1.Status = ?")
+            params.append(status)
 
     if search:
         where_clauses.append(
@@ -336,6 +340,97 @@ def update_order_status(order_id: int, new_status: str, modified_by: int) -> boo
         return cursor.rowcount > 0
 
 
+def add_order_status_history(data: dict) -> int:
+    """Insert a status-transition history record and return new ID."""
+    sql = """
+        INSERT INTO Intra_SalesOrder_StatusHistory
+        (order_id, po_number, from_status, to_status, action_type,
+         actor_emp_id, actor_name, actor_role, remarks,
+         price_signature, total_amount, reject_reason, reject_remarks, created_on)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    with transactional() as (conn, cursor):
+        cursor.execute(sql, [
+            data.get("order_id"),
+            data.get("po_number", ""),
+            data.get("from_status", ""),
+            data.get("to_status", ""),
+            data.get("action_type", "STATUS_CHANGE"),
+            data.get("actor_emp_id"),
+            data.get("actor_name", ""),
+            data.get("actor_role", ""),
+            data.get("remarks", ""),
+            data.get("price_signature", ""),
+            data.get("total_amount", 0),
+            data.get("reject_reason", ""),
+            data.get("reject_remarks", ""),
+            data.get("created_on") or datetime.now(),
+        ])
+        cursor.execute("SELECT @@IDENTITY")
+        row = cursor.fetchone()
+        return int(row[0]) if row else 0
+
+
+def get_order_status_history(order_id: int) -> list[dict]:
+    """Return status-transition history for an order (newest first)."""
+    sql = """
+        SELECT h.id,
+               h.order_id,
+               h.po_number,
+               h.from_status,
+               h.to_status,
+               h.action_type,
+               h.actor_emp_id,
+               h.actor_name,
+               h.actor_role,
+               h.remarks,
+               h.price_signature,
+               h.total_amount,
+               h.reject_reason,
+               h.reject_remarks,
+               h.created_on
+        FROM Intra_SalesOrder_StatusHistory h
+        WHERE h.order_id = ?
+        ORDER BY h.created_on DESC, h.id DESC
+    """
+    with read_only() as cursor:
+        cursor.execute(sql, [order_id])
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, r)) for r in cursor.fetchall()]
+
+
+def get_latest_rejection_status_history(order_id: int) -> dict | None:
+    """Get latest rejection history entry for this order, if any."""
+    sql = """
+        SELECT TOP 1
+               h.id,
+               h.order_id,
+               h.po_number,
+               h.from_status,
+               h.to_status,
+               h.action_type,
+               h.actor_emp_id,
+               h.actor_name,
+               h.actor_role,
+               h.remarks,
+               h.price_signature,
+               h.total_amount,
+               h.reject_reason,
+               h.reject_remarks,
+               h.created_on
+        FROM Intra_SalesOrder_StatusHistory h
+        WHERE h.order_id = ? AND h.to_status LIKE 'REJECTED%'
+        ORDER BY h.created_on DESC, h.id DESC
+    """
+    with read_only() as cursor:
+        cursor.execute(sql, [order_id])
+        row = cursor.fetchone()
+        if not row:
+            return None
+        cols = [d[0] for d in cursor.description]
+        return dict(zip(cols, row))
+
+
 # ── Items CRUD ──────────────────────────────────────────────────
 
 def add_order_item(data: dict) -> int:
@@ -594,7 +689,7 @@ def get_dashboard_stats_for_user(emp_id: int) -> dict:
             SUM(CASE WHEN Status = 'CONFIRMED'       THEN 1 ELSE 0 END) AS confirmed,
             SUM(CASE WHEN Status = 'CUSTOMS DOCUMENT UPDATED' THEN 1 ELSE 0 END) AS customs_updated,
             SUM(CASE WHEN Status = 'DELIVERED'       THEN 1 ELSE 0 END) AS delivered,
-            SUM(CASE WHEN Status = 'REJECTED'        THEN 1 ELSE 0 END) AS rejected,
+            SUM(CASE WHEN Status LIKE 'REJECTED%'    THEN 1 ELSE 0 END) AS rejected,
             SUM(CASE WHEN Status = 'CANCELLED'       THEN 1 ELSE 0 END) AS cancelled,
             SUM(CASE WHEN Status = 'PENDING CUSTOMER APPROVAL' THEN 1 ELSE 0 END) AS pending_customer_approval
         FROM Intra_SalesOrder
@@ -628,8 +723,12 @@ def get_orders_for_user(
     params: list = [emp_id]
 
     if status and status != "ALL":
-        where_clauses.append("t1.Status = ?")
-        params.append(status)
+        normalized_status = (status or "").strip().upper()
+        if normalized_status == "REJECTED":
+            where_clauses.append("t1.Status LIKE 'REJECTED%'")
+        else:
+            where_clauses.append("t1.Status = ?")
+            params.append(status)
 
     if search:
         where_clauses.append(

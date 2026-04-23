@@ -8,7 +8,7 @@
   {% endfor %}
 </div>
 
-<div style="max-width:1100px;margin:0 auto;padding:var(--sp-6);">
+<div class="wf-page" style="max-width:1280px;margin:0 auto;padding:var(--sp-6);">
   <!-- Breadcrumb -->
   <div style="display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4);font-size:var(--text-sm);">
     <a href="{{ url_for('admin.index') }}" style="color:var(--slate-400);text-decoration:none;">Admin</a>
@@ -22,7 +22,7 @@
   </p>
 
   <!-- Module selector -->
-  <div style="margin-bottom:var(--sp-6);display:flex;gap:var(--sp-2);">
+  <div class="wf-module-tabs" style="margin-bottom:var(--sp-6);display:flex;gap:var(--sp-2);">
     {% for mk, mn in workflow_modules.items() %}
     <a href="{{ url_for('admin.workflow', module=mk) }}"
        class="btn {{ 'btn-primary' if mk == module_key else 'btn-secondary' }}">
@@ -31,36 +31,41 @@
     {% endfor %}
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-6);">
+  <div class="wf-view-tabs" style="display:flex;gap:var(--sp-2);margin-bottom:var(--sp-4);">
+    <button type="button" class="btn btn-primary btn-sm" data-wf-view="statuses">Statuses</button>
+    <button type="button" class="btn btn-secondary btn-sm" data-wf-view="transitions">Transitions</button>
+  </div>
+
+  <div class="wf-grid" style="display:block;">
     <!-- Statuses -->
-    <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
+    <div id="wf-panel-statuses" class="wf-card wf-panel is-active" style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
       <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Statuses</h2>
 
-      <div class="table-wrap" style="margin-bottom:var(--sp-4);">
-        <table class="data-table">
+      <div class="table-wrap wf-table-wrap" style="margin-bottom:var(--sp-4);">
+        <table class="data-table wf-statuses-table">
           <thead>
             <tr>
               <th>#</th>
               <th>Key</th>
               <th>Name</th>
               <th>Terminal</th>
-              <th style="text-align:right;">Action</th>
+              <th style="text-align:left;">Action</th>
             </tr>
           </thead>
           <tbody>
             {% for s in statuses %}
             <tr>
-              <td>{{ s.sort_order }}</td>
-              <td style="font-family:monospace;font-size:var(--text-xs);">{{ s.status_key }}</td>
-              <td>{{ s.display_name }}</td>
-              <td>
+              <td data-label="#">{{ s.sort_order }}</td>
+              <td data-label="Key" style="font-family:monospace;font-size:var(--text-xs);">{{ s.status_key }}</td>
+              <td data-label="Name">{{ s.display_name }}</td>
+              <td data-label="Terminal">
                 {% if s.is_terminal %}
                   <span class="badge badge--red">Yes</span>
                 {% else %}
                   <span class="badge badge--slate">No</span>
                 {% endif %}
               </td>
-              <td style="text-align:right;">
+              <td data-label="Action" style="text-align:right;">
                 <form method="POST" action="{{ url_for('admin.workflow_status_delete', status_id=s.id) }}" style="display:inline;" onsubmit="return confirm('Delete this status and ALL transitions referencing it?');">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
@@ -96,46 +101,46 @@
     </div>
 
     <!-- Transitions -->
-    <div style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
+    <div id="wf-panel-transitions" class="wf-card wf-panel" style="background:var(--white);border-radius:var(--radius-lg);border:1px solid var(--slate-200);padding:var(--sp-6);">
       <h2 style="font-size:var(--text-lg);font-weight:var(--font-semibold);color:var(--slate-800);margin-bottom:var(--sp-4);">Transitions</h2>
 
-      <div class="table-wrap" style="margin-bottom:var(--sp-4);">
-        <table class="data-table">
+      <div class="table-wrap wf-table-wrap" style="margin-bottom:var(--sp-4);">
+        <table class="data-table wf-transitions-table">
           <thead>
             <tr>
               <th>From</th>
               <th>To</th>
               <th>Role</th>
               <th>Condition</th>
-              <th style="text-align:right;">Action</th>
+              <th style="text-align:left;">Action</th>
             </tr>
           </thead>
           <tbody>
             {% for t in transitions %}
             {% set edit_form_id = 'wf_edit_' ~ t.id %}
             <tr>
-              <td style="font-family:monospace;font-size:var(--text-xs);">{{ t.from_status }}</td>
-              <td style="font-family:monospace;font-size:var(--text-xs);">{{ t.to_status }}</td>
-              <td>
-                <select name="required_role" form="{{ edit_form_id }}" class="form-select" style="min-width:140px;" required>
+              <td data-label="From" style="font-family:monospace;font-size:var(--text-xs);">{{ t.from_status }}</td>
+              <td data-label="To" style="font-family:monospace;font-size:var(--text-xs);">{{ t.to_status }}</td>
+              <td data-label="Role">
+                <select name="required_role" form="{{ edit_form_id }}" class="form-select wf-searchable" required>
                   {% for rk, label in available_roles.items() %}
                   <option value="{{ rk }}" {% if rk == (t.required_role_key or t.required_role) %}selected{% endif %}>{{ label }}</option>
                   {% endfor %}
                 </select>
               </td>
-              <td>
-                <select name="condition_key" form="{{ edit_form_id }}" class="form-select" style="min-width:180px;" required>
+              <td data-label="Condition">
+                <select name="condition_key" form="{{ edit_form_id }}" class="form-select wf-searchable" required>
                   {% for ck, clabel in transition_conditions.items() %}
                   <option value="{{ ck }}" {% if ck == (t.condition_key or 'always') %}selected{% endif %}>{{ clabel }}</option>
                   {% endfor %}
                 </select>
               </td>
-              <td style="text-align:right;white-space:nowrap;">
-                <form id="{{ edit_form_id }}" method="POST" action="{{ url_for('admin.workflow_transition_edit', transition_id=t.id) }}" style="display:inline-block;">
+              <td data-label="Action" class="wf-actions" style="text-align:left;">
+                <form id="{{ edit_form_id }}" method="POST" action="{{ url_for('admin.workflow_transition_edit', transition_id=t.id) }}">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-secondary btn-sm">Save</button>
                 </form>
-                <form method="POST" action="{{ url_for('admin.workflow_transition_delete', transition_id=t.id) }}" style="display:inline-block;margin-left:6px;" onsubmit="return confirm('Remove this transition?');">
+                <form method="POST" action="{{ url_for('admin.workflow_transition_delete', transition_id=t.id) }}" onsubmit="return confirm('Remove this transition?');">
                   <input type="hidden" name="module_key" value="{{ module_key }}">
                   <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                 </form>
@@ -154,26 +159,26 @@
         <h3 style="font-size:var(--text-sm);font-weight:var(--font-semibold);color:var(--slate-600);margin-bottom:var(--sp-3);">Add Transition</h3>
         <form method="POST" action="{{ url_for('admin.workflow_transition_add') }}">
           <input type="hidden" name="module_key" value="{{ module_key }}">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:var(--sp-2);margin-bottom:var(--sp-3);">
-            <select name="from_status" class="form-select" required>
+          <div class="wf-add-transition-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1.4fr;gap:var(--sp-2);margin-bottom:var(--sp-3);">
+            <select name="from_status" class="form-select wf-searchable" required>
               <option value="">From…</option>
               {% for s in statuses %}
               <option value="{{ s.status_key }}">{{ s.display_name }}</option>
               {% endfor %}
             </select>
-            <select name="to_status" class="form-select" required>
+            <select name="to_status" class="form-select wf-searchable" required>
               <option value="">To…</option>
               {% for s in statuses %}
               <option value="{{ s.status_key }}">{{ s.display_name }}</option>
               {% endfor %}
             </select>
-            <select name="required_role" class="form-select" required>
+            <select name="required_role" class="form-select wf-searchable" required>
               <option value="">Select role…</option>
               {% for rk, label in available_roles.items() %}
               <option value="{{ rk }}">{{ label }}</option>
               {% endfor %}
             </select>
-            <select name="condition_key" class="form-select" required>
+            <select name="condition_key" class="form-select wf-searchable" required>
               {% for ck, clabel in transition_conditions.items() %}
               <option value="{{ ck }}">{{ clabel }}</option>
               {% endfor %}
@@ -188,5 +193,310 @@
 
 <script>
 setTimeout(() => document.querySelectorAll('.toast').forEach(t => t.remove()), 5000);
+</script>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.wf-ss-wrap { position: relative; display: inline-block; width: 100%; }
+.wf-ss-btn {
+  width: 100%; text-align: left; padding: 9px 34px 9px 12px;
+  border: 1px solid var(--slate-300, #cbd5e1); border-radius: var(--radius-md, 8px);
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%2364748b' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 10px center;
+  cursor: pointer; font-size: var(--text-sm, 13px); color: var(--slate-700, #334155);
+  min-width: 0; box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.wf-ss-btn:hover { border-color: var(--slate-400, #94a3b8); }
+.wf-ss-btn:focus,
+.wf-ss-btn:focus-visible {
+  outline: none;
+  border-color: var(--brand-500, #16a34a);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, .16);
+}
+.wf-ss-dropdown {
+  position: absolute; top: 100%; left: 0; z-index: 9999;
+  background: #fff; border: 1px solid var(--slate-200, #e2e8f0);
+  border-radius: var(--radius-md, 8px); box-shadow: 0 8px 18px rgba(15, 23, 42, .10);
+  min-width: 100%; width: 100%;
+}
+.wf-ss-search {
+  width: 100%; box-sizing: border-box; padding: 9px 10px;
+  border: none; border-bottom: 1px solid var(--slate-200, #e2e8f0); background: #f8fafc;
+  font-size: var(--text-sm, 13px); outline: none; border-radius: 6px 6px 0 0;
+}
+.wf-ss-list { max-height: 220px; overflow-y: auto; }
+.wf-ss-item {
+  padding: 8px 12px; cursor: pointer; font-size: var(--text-sm, 13px);
+  color: var(--slate-700, #334155); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wf-ss-item:hover { background: #f1f5f9; }
+.wf-ss-item--selected { background: #ecfdf3; color: #166534; font-weight: 600; }
+.wf-ss-empty { padding: 10px 12px; color: var(--slate-400, #94a3b8); font-size: var(--text-sm, 13px); }
+
+.wf-page { overflow: visible; }
+.wf-view-tabs { flex-wrap: wrap; }
+.wf-panel { display: none; overflow: visible; }
+.wf-panel.is-active { display: block; }
+.wf-table-wrap { overflow: visible; }
+.wf-card { overflow: visible; }
+.wf-table-wrap .data-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: auto;
+}
+
+.wf-statuses-table {
+  table-layout: auto;
+}
+.wf-statuses-table th,
+.wf-statuses-table td {
+  white-space: nowrap;
+}
+
+.wf-transitions-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.wf-transitions-table th,
+.wf-transitions-table td {
+  padding: 8px 6px;
+}
+.wf-transitions-table th,
+.wf-transitions-table td {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  vertical-align: middle;
+}
+.wf-transitions-table th:last-child,
+.wf-transitions-table td:last-child {
+  overflow: visible;
+  text-overflow: clip;
+}
+.wf-transitions-table th:nth-child(1),
+.wf-transitions-table td:nth-child(1) { width: 10%; }
+.wf-transitions-table th:nth-child(2),
+.wf-transitions-table td:nth-child(2) { width: 18%; }
+.wf-transitions-table th:nth-child(3),
+.wf-transitions-table td:nth-child(3) { width: 16%; }
+.wf-transitions-table th:nth-child(4),
+.wf-transitions-table td:nth-child(4) { width: 30%; }
+.wf-transitions-table th:nth-child(5),
+.wf-transitions-table td:nth-child(5) { width: 26%; }
+
+.wf-transitions-table td:nth-child(1),
+.wf-transitions-table td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.wf-transitions-table .wf-ss-wrap,
+.wf-transitions-table .wf-ss-btn {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.wf-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+.wf-actions form {
+  margin: 0;
+  display: inline-flex;
+}
+
+@media (max-width: 1200px) {
+  .wf-page { padding: var(--sp-4) !important; }
+}
+
+@media (max-width: 900px) {
+  .wf-module-tabs {
+    flex-wrap: wrap;
+    row-gap: var(--sp-2);
+  }
+}
+
+@media (max-width: 768px) {
+  .wf-card { padding: var(--sp-4) !important; }
+  .wf-add-transition-grid { grid-template-columns: 1fr !important; }
+  .wf-table-wrap { overflow: visible; }
+  .wf-statuses-table th,
+  .wf-statuses-table td,
+  .wf-transitions-table th,
+  .wf-transitions-table td {
+    font-size: var(--text-xs, 12px);
+    padding: 8px 6px;
+  }
+  .wf-transitions-table {
+    table-layout: auto;
+  }
+  .wf-transitions-table th,
+  .wf-transitions-table td {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .wf-view-tabs .btn {
+    flex: 1 1 0;
+  }
+  .wf-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+  .wf-ss-btn { min-width: 0; }
+}
+</style>
+<script>
+(function () {
+  const wfInstances = [];
+  let globalOutsideClickBound = false;
+
+  function bindGlobalOutsideClick() {
+    if (globalOutsideClickBound) return;
+    globalOutsideClickBound = true;
+    document.addEventListener('click', (e) => {
+      wfInstances.forEach((instance) => {
+        if (!instance.wrap.contains(e.target)) instance._close();
+      });
+    });
+  }
+
+  class WfSearchableSelect {
+    constructor(selectEl) {
+      if (selectEl.dataset.wfSsInit) return;
+      selectEl.dataset.wfSsInit = '1';
+      this.select = selectEl;
+      this.options = Array.from(selectEl.options).filter(o => o.value !== '').map(o => ({
+        value: o.value,
+        text: o.textContent.trim(),
+      }));
+      // Also keep the blank placeholder option if present
+      this.placeholder = Array.from(selectEl.options).find(o => o.value === '');
+
+      this.wrap = document.createElement('div');
+      this.wrap.className = 'wf-ss-wrap';
+      selectEl.parentNode.insertBefore(this.wrap, selectEl);
+
+      const selected = this.options.find(o => o.value === selectEl.value);
+      this.btn = document.createElement('button');
+      this.btn.type = 'button';
+      this.btn.className = 'wf-ss-btn';
+      this.btn.textContent = selected ? selected.text : (this.placeholder ? this.placeholder.textContent.trim() : 'Select…');
+      this.wrap.appendChild(this.btn);
+
+      this.dropdown = document.createElement('div');
+      this.dropdown.className = 'wf-ss-dropdown';
+      this.dropdown.style.display = 'none';
+
+      this.input = document.createElement('input');
+      this.input.type = 'text';
+      this.input.className = 'wf-ss-search';
+      this.input.placeholder = 'Search…';
+      this.dropdown.appendChild(this.input);
+
+      this.list = document.createElement('div');
+      this.list.className = 'wf-ss-list';
+      this.dropdown.appendChild(this.list);
+      this.wrap.appendChild(this.dropdown);
+
+      // Hide original select
+      selectEl.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:0;height:0;';
+      selectEl.tabIndex = -1;
+
+      this._render('');
+
+      this.btn.addEventListener('click', (e) => { e.stopPropagation(); this._toggle(); });
+      this.input.addEventListener('input', () => this._render(this.input.value));
+
+      wfInstances.push(this);
+      bindGlobalOutsideClick();
+    }
+
+    _render(query) {
+      const q = query.toLowerCase();
+      this.list.innerHTML = '';
+      const matches = this.options.filter(o => o.text.toLowerCase().includes(q));
+      if (!matches.length) {
+        const empty = document.createElement('div');
+        empty.className = 'wf-ss-empty';
+        empty.textContent = 'No results';
+        this.list.appendChild(empty);
+        return;
+      }
+      matches.forEach(o => {
+        const item = document.createElement('div');
+        item.className = 'wf-ss-item';
+        if (o.value === this.select.value) item.classList.add('wf-ss-item--selected');
+        item.textContent = o.text;
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.select.value = o.value;
+          this.select.dispatchEvent(new Event('change', { bubbles: true }));
+          this.btn.textContent = o.text;
+          this._close();
+        });
+        this.list.appendChild(item);
+      });
+    }
+
+    _toggle() {
+      if (this.dropdown.style.display !== 'none') {
+        this._close();
+      } else {
+        // Close all other open wf dropdowns first
+        document.querySelectorAll('.wf-ss-dropdown').forEach(d => { d.style.display = 'none'; });
+        this.dropdown.style.display = '';
+        this.input.value = '';
+        this._render('');
+        this.input.focus();
+      }
+    }
+
+    _close() { this.dropdown.style.display = 'none'; }
+  }
+
+  function initAll() {
+    document.querySelectorAll('.wf-searchable').forEach(sel => new WfSearchableSelect(sel));
+  }
+
+  function initViewTabs() {
+    const statusPanel = document.getElementById('wf-panel-statuses');
+    const transitionPanel = document.getElementById('wf-panel-transitions');
+    const buttons = document.querySelectorAll('[data-wf-view]');
+    if (!statusPanel || !transitionPanel || !buttons.length) return;
+
+    function setView(view) {
+      const showStatuses = view !== 'transitions';
+      statusPanel.classList.toggle('is-active', showStatuses);
+      transitionPanel.classList.toggle('is-active', !showStatuses);
+      buttons.forEach((btn) => {
+        const active = btn.getAttribute('data-wf-view') === (showStatuses ? 'statuses' : 'transitions');
+        btn.classList.toggle('btn-primary', active);
+        btn.classList.toggle('btn-secondary', !active);
+      });
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => setView(btn.getAttribute('data-wf-view')));
+    });
+
+    setView('statuses');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initAll();
+      initViewTabs();
+    });
+  } else {
+    initAll();
+    initViewTabs();
+  }
+})();
 </script>
 {% endblock %}

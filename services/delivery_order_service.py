@@ -3,6 +3,7 @@ Delivery Order service — business logic for the Sales/Delivery Order module.
 """
 
 import builtins
+import hashlib
 
 from flask import session
 from repos.delivery_order_repo import (
@@ -23,6 +24,9 @@ from repos.delivery_order_repo import (
     update_order,
     update_order_status,
     update_order_status_with_reason,
+    get_latest_rejection_status_history,
+    get_order_status_history,
+    add_order_status_history,
     add_order_item,
     delete_order_item,
     add_order_attachment,
@@ -182,6 +186,7 @@ def list_orders(
     do_role = get_do_role()
     if do_role in (DO_ROLE_APPROVER, DO_ROLE_FINANCE, DO_ROLE_LOGISTICS, DO_ROLE_CUSTOMER_MANAGER):
         return get_all_orders(status=status, page=page, per_page=per_page, search=search)
+
     emp_id = session.get("emp_id")
     if emp_id:
         return get_orders_for_user(emp_id, status=status, page=page, per_page=per_page, search=search)
@@ -201,7 +206,120 @@ def get_order_detail(order_id: int) -> dict | None:
     order["can_edit"] = can_edit_order(order)
     order["show_prices"] = can_see_prices()
     order["products"] = get_products()
+    order["status_history"] = get_order_status_history(order_id)
     return order
+
+
+def _get_actor_name() -> str:
+    """Build actor display name from session with safe fallbacks."""
+    first = (session.get("first_name") or "").strip()
+    last = (session.get("last_name") or "").strip()
+    full = (f"{first} {last}").strip()
+    if full:
+        return full
+    return (session.get("name") or session.get("username") or session.get("email") or "Unknown User").strip()
+
+
+def _build_price_signature(order: dict) -> tuple[str, float]:
+    """Compute deterministic signature + total amount for current line-item pricing."""
+    items = get_order_items(order.get("PO_Number", ""))
+    parts: list[str] = []
+    total_amount = 0.0
+
+    for item in items:
+        product_id = str(item.get("Product_ID") or "").strip()
+        qty = float(item.get("Quantity") or 0)
+        unit_price = float(item.get("Unit_Price") or 0)
+        currency = str(item.get("Currency") or "").strip().upper()
+        parts.append(f"{product_id}|{qty:.4f}|{unit_price:.4f}|{currency}")
+        total_amount += float(item.get("Total_Amount") or (qty * unit_price))
+
+    payload = "||".join(sorted(parts))
+    signature = hashlib.sha256(payload.encode("utf-8")).hexdigest() if payload else ""
+    return signature, total_amount
+
+
+def _log_status_transition(
+    order: dict,
+    from_status: str,
+    to_status: str,
+    emp_id: int,
+    actor_role: str,
+    reject_reason: str | None = None,
+    reject_remarks: str | None = None,
+    remarks: str | None = None,
+) -> None:
+    """Persist status transition transaction record. Fail-safe: never break main flow."""
+    try:
+        price_signature, total_amount = _build_price_signature(order)
+        if to_status == "SUBMITTED":
+            action_type = "SUBMITTED"
+        elif to_status.startswith("REJECTED"):
+            action_type = "REJECTED"
+        elif to_status in ("PRICE AGREED", "CONFIRMED", "DELIVERED"):
+            action_type = "APPROVED"
+        else:
+            action_type = "STATUS_CHANGE"
+
+        add_order_status_history({
+            "order_id": order.get("id"),
+            "po_number": order.get("PO_Number", ""),
+            "from_status": from_status,
+            "to_status": to_status,
+            "action_type": action_type,
+            "actor_emp_id": emp_id,
+            "actor_name": _get_actor_name(),
+            "actor_role": actor_role,
+            "remarks": remarks or "",
+            "price_signature": price_signature,
+            "total_amount": round(total_amount, 2),
+            "reject_reason": reject_reason or "",
+            "reject_remarks": reject_remarks or "",
+        })
+    except Exception:
+        # Keep status flow resilient if history insert fails.
+        pass
+
+
+def _route_resubmission_target(
+    order: dict,
+    current_target_status: str,
+    requested_status: str,
+) -> tuple[str, str | None]:
+    """Apply business routing for creator re-submissions after rejection."""
+    if requested_status != "SUBMITTED":
+        return current_target_status, None
+
+    last_reject = get_latest_rejection_status_history(order.get("id"))
+    if not last_reject:
+        return current_target_status, None
+
+    rejected_by_role = (last_reject.get("actor_role") or "").strip().lower()
+    if rejected_by_role == DO_ROLE_FINANCE:
+        return "SUBMITTED", "Resubmission routed to Finance (last rejection by Finance)."
+
+    if rejected_by_role == DO_ROLE_LOGISTICS:
+        previous_signature = (last_reject.get("price_signature") or "").strip()
+        current_signature, current_total_amount = _build_price_signature(order)
+
+        # Primary check: deterministic item-level signature (unit price/qty/currency/product)
+        price_changed = bool(previous_signature and current_signature and previous_signature != current_signature)
+
+        # Fallback for old history rows without signature: compare stored total amount.
+        if not price_changed and (not previous_signature or not current_signature):
+            try:
+                previous_total = float(last_reject.get("total_amount") or 0)
+            except (TypeError, ValueError):
+                previous_total = 0.0
+            price_changed = abs(previous_total - float(current_total_amount or 0)) > 0.0001
+
+        if price_changed:
+            return "SUBMITTED", "Resubmission routed to Finance because pricing changed after Logistics rejection."
+
+        # No price change: return directly to logistics lane.
+        return "PRICE AGREED", "Resubmission routed directly to Logistics (no pricing change)."
+
+    return current_target_status, None
 
 
 # ── Lookups ─────────────────────────────────────────────────────
@@ -388,17 +506,24 @@ def change_order_status(
     if not order:
         return False, ["Order not found."], ""
 
-    current = order.get("Status", "")
-    flow = _get_status_flow()
-    allowed = flow.get(current, [])
     requested_status = (new_status or "").strip().upper()
+    current = (order.get("Status", "") or "").strip().upper()
+    flow = {
+        (src or "").strip().upper(): [
+            (dst or "").strip().upper() for dst in destinations if (dst or "").strip()
+        ]
+        for src, destinations in _get_status_flow().items()
+    }
+    allowed = flow.get(current, [])
 
-    if new_status not in allowed:
+    if requested_status not in allowed:
         return False, ["Status transition not allowed."], ""
 
     # Permission check on the originally-requested status (before any internal redirect).
-    if not can_transition(order, new_status):
+    if not can_transition(order, requested_status):
         return False, ["You lack permission for this transition."], ""
+
+    new_status = requested_status
 
     # Ownership routing: creator submitting DRAFT → check if Customer Manager approval needed.
     # Use the already-JOINed ownership fields from the order dict to avoid an extra DB call
@@ -408,6 +533,13 @@ def change_order_status(
         ship_o = (order.get("ship_to_ownership_sole_prop") or "").strip()
         if bill_o in ("Yes", "N/A") or ship_o in ("Yes", "N/A"):
             new_status = "PENDING CUSTOMER APPROVAL"
+
+    # Re-submission routing override: if order was rejected previously,
+    # route based on rejecting role + price change rule.
+    # This intentionally runs after ownership routing so re-submission logic wins.
+    reroute_remarks = None
+    if requested_status == "SUBMITTED":
+        new_status, reroute_remarks = _route_resubmission_target(order, new_status, requested_status)
 
     # Mandatory-field gate for creator submit requests, even if workflow reroutes
     # internally to customer approval first.
@@ -423,6 +555,18 @@ def change_order_status(
         )
     else:
         ok = update_order_status(order_id, new_status, emp_id)
+
+    if ok:
+        _log_status_transition(
+            order=order,
+            from_status=current,
+            to_status=new_status,
+            emp_id=emp_id,
+            actor_role=get_do_role(),
+            reject_reason=reject_reason,
+            reject_remarks=reject_remarks,
+            remarks=reroute_remarks,
+        )
 
     # Send email notification on successful transition
     if ok:
