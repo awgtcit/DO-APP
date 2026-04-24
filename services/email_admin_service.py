@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
-from flask import current_app
+from flask import current_app, has_request_context, url_for
 from werkzeug.utils import secure_filename
 
 from audit.logger import log_activity
@@ -424,9 +424,10 @@ def resolve_workflow_email_for_do(
 
     order_link = ""
     try:
-        app = current_app
-        if app:
-            order_link = f"{app.config.get('AUTH_BASE_URL', '').rstrip('/')}"
+        if current_app:
+            order_id = order.get("id")
+            if order_id and has_request_context():
+                order_link = url_for("delivery_orders.order_detail", order_id=order_id, _external=True)
     except RuntimeError:
         order_link = ""
 

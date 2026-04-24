@@ -18,17 +18,6 @@ from services.do_pdf_service import should_attach_pdf, generate_order_pdf, pdf_f
 
 logger = logging.getLogger(__name__)
 
-# ── Recipient lists (matching legacy hardcoded addresses) ───────
-
-# Primary recipient for ALL DO status emails
-DO_PRIMARY_TO = ["purchaseorder@alwahdania.com"]
-
-# BCC — admin / IT notification copies (matches legacy SalesOrderMail.php)
-DO_BCC = [
-    "vivan_it@universaltobacco.ae",
-    "ajoy@alwahdania.com",
-]
-
 
 # ── Public API ──────────────────────────────────────────────────
 
@@ -39,16 +28,22 @@ def send_do_status_email(
     reject_reason: str | None = None,
     reject_remarks: str | None = None,
     extra_cc: list[str] | None = None,
+    exclude_emails: list[str] | None = None,
+    run_async: bool = True,
+    diagnostics: dict | None = None,
 ) -> bool:
     """
-    Queue a notification email for a DO status transition.
+    Queue or send a notification email for a DO status transition.
 
-    The actual SMTP send runs in a daemon thread so the caller
-    (and the HTTP response) is not blocked.  Returns True immediately;
-    any SMTP failures are logged but do not propagate.
+    The SMTP send runs in a daemon thread by default so the caller
+    (and the HTTP response) is not blocked.  When *run_async* is False,
+    the send runs inline and the return value reflects SMTP success.
 
-    *extra_cc* — optional list of email addresses to CC (e.g. the order
-    creator and/or the user performing the action).
+    *extra_cc* — optional list of email addresses to CC.
+    *exclude_emails* — optional list of addresses that must be removed from
+    TO/CC/BCC (e.g. creator and acting user).
+    *diagnostics* — optional dict to capture effective recipients and
+    attachment/send outcome details.
     """
     po_number = order.get("PO_Number", "")
 
@@ -69,7 +64,7 @@ def send_do_status_email(
             reject_reason=reject_reason,
             reject_remarks=reject_remarks,
         )
-        to_recipients = workflow_cfg.get("to") or DO_PRIMARY_TO
+        to_recipients = workflow_cfg.get("to") or []
         configured_cc = workflow_cfg.get("cc") or []
         configured_bcc = workflow_cfg.get("bcc") or []
         include_default_attachment = bool(workflow_cfg.get("include_default_attachment"))
@@ -83,58 +78,129 @@ def send_do_status_email(
             reject_reason=reject_reason,
             reject_remarks=reject_remarks,
         )
-        to_recipients = DO_PRIMARY_TO
+        to_recipients = []
         configured_cc = []
-        configured_bcc = DO_BCC
-        include_default_attachment = True
+        configured_bcc = []
+        include_default_attachment = False
         configured_attachments = []
 
-    # Deduplicate and filter out empty / primary-TO addresses for CC
-    cc_list = list({
-        e.strip().lower()
-        for e in (list(extra_cc or []) + list(configured_cc or []))
-        if e and e.strip() and e.strip().lower() not in
-           {a.lower() for a in to_recipients}
-    })
+    def _normalize_emails(values: list[str] | None) -> list[str]:
+        seen: set[str] = set()
+        normalized: list[str] = []
+        for value in values or []:
+            email = (value or "").strip().lower()
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            normalized.append(email)
+        return normalized
 
-    bcc_list = list({e.strip().lower() for e in (configured_bcc or []) if e and e.strip()})
+    excluded = set(_normalize_emails(exclude_emails))
+
+    to_list = [e for e in _normalize_emails(list(to_recipients or [])) if e not in excluded]
+
+    cc_candidates = _normalize_emails(list(extra_cc or []) + list(configured_cc or []))
+    cc_list = [e for e in cc_candidates if e not in excluded and e not in set(to_list)]
+
+    bcc_candidates = _normalize_emails(list(configured_bcc or []))
+    bcc_list = [e for e in bcc_candidates if e not in excluded and e not in set(to_list) and e not in set(cc_list)]
 
     # Generate PDF attachment (must happen here — needs Flask app context)
     attachments = list(configured_attachments)
     attach_pdf = include_default_attachment and should_attach_pdf(new_status)
     app = current_app._get_current_object() if attach_pdf else None
 
-    def _send():
+    send_state = {
+        "workflow_config_used": bool(workflow_cfg),
+        "to": list(to_list),
+        "cc": list(cc_list),
+        "bcc": list(bcc_list),
+        "attachment_expected": bool(attach_pdf),
+        "attachment_added": False,
+        "attachment_name": None,
+        "sent": False,
+        "error": None,
+    }
+
+    if not workflow_cfg:
+        send_state["error"] = "Workflow email configuration is missing or disabled for this status"
+
+    if diagnostics is not None:
+        diagnostics.clear()
+        diagnostics.update(send_state)
+
+    def _send_once() -> bool:
+        local_attachments = list(attachments)
         try:
+            if not workflow_cfg:
+                logger.info(
+                    "Skipping DO email for %s -> %s: workflow email configuration missing/disabled",
+                    po_number,
+                    new_status,
+                )
+                return False
+
+            if not to_list and not cc_list and not bcc_list:
+                send_state["error"] = (
+                    f"No recipients available after filtering "
+                    f"(raw_to={workflow_cfg.get('to') if workflow_cfg else 'n/a'}, "
+                    f"extra_cc={extra_cc!r})"
+                )
+                logger.warning(
+                    "Skipping DO email for %s -> %s: no recipients after filtering "
+                    "(raw_to=%s extra_cc=%s)",
+                    po_number,
+                    new_status,
+                    workflow_cfg.get("to") if workflow_cfg else "n/a",
+                    extra_cc,
+                )
+                return False
+
             # PDF generation in background thread (with app context)
-            nonlocal attachments
             if attach_pdf and app is not None:
                 with app.app_context():
                     pdf_bytes = generate_order_pdf(order)
                     if pdf_bytes:
                         fname = pdf_filename(po_number)
-                        attachments.append((fname, pdf_bytes, "pdf"))
+                        local_attachments.append((fname, pdf_bytes, "pdf"))
+                        send_state["attachment_added"] = True
+                        send_state["attachment_name"] = fname
                         logger.info("PDF attachment ready: %s (%d bytes)", fname, len(pdf_bytes))
                     else:
                         logger.warning("PDF generation failed for %s — sending without attachment", po_number)
 
-            send_email(
-                to=to_recipients,
+            sent_ok = send_email(
+                to=to_list,
                 subject=subject,
                 body_html=body,
                 cc=cc_list or None,
                 bcc=bcc_list or None,
-                attachments=attachments or None,
+                attachments=local_attachments or None,
             )
-            logger.info("DO email sent for %s -> %s (to=%s cc=%s)", po_number, new_status, to_recipients, cc_list)
+            if not sent_ok:
+                send_state["error"] = "SMTP send failed"
+                return False
+
+            send_state["sent"] = True
+            logger.info("DO email sent for %s -> %s (to=%s cc=%s)", po_number, new_status, to_list, cc_list)
+            return True
         except Exception:
+            send_state["error"] = "SMTP send failed"
             logger.exception(
                 "Background DO email failed for %s -> %s", po_number, new_status
             )
+            return False
+        finally:
+            if diagnostics is not None:
+                diagnostics.clear()
+                diagnostics.update(send_state)
 
-    thread = threading.Thread(target=_send, daemon=True)
-    thread.start()
-    return True
+    if run_async:
+        thread = threading.Thread(target=_send_once, daemon=True)
+        thread.start()
+        return True
+
+    return _send_once()
 
 
 # ── Subject ─────────────────────────────────────────────────────

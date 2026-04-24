@@ -1,6 +1,10 @@
 {% extends base_template|default("base.html") %}
 {% block title %}Edit {{ order.PO_Number }}{% endblock %}
 
+{% block head %}
+{% include "delivery_orders/_calendar_picker.html" %}
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -28,8 +32,16 @@
       <div class="grid-2">
         <div class="form-group">
           <label class="form-label">Date *</label>
-          <input type="date" name="po_date" class="form-input" required
-                 value="{{ order.po_date_fmt or '' }}">
+          <div class="calendar-field" data-calendar-root>
+            <input type="hidden" name="po_date" value="{{ order.po_date_fmt or '' }}" data-calendar-value>
+            <div class="calendar-field__control">
+              <input type="text" class="form-input calendar-field__display" placeholder="dd/mm/yyyy" value="" readonly required data-calendar-display aria-haspopup="dialog" aria-expanded="false">
+              <button type="button" class="calendar-field__toggle" data-calendar-toggle aria-label="Choose order date">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" style="width:18px;height:18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0V10.5A2.25 2.25 0 015.25 8.25h13.5A2.25 2.25 0 0121 10.5v8.25"/></svg>
+              </button>
+            </div>
+            <div class="calendar-popover" data-calendar-popover hidden></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">On Behalf Of *</label>
@@ -45,8 +57,16 @@
         </div>
         <div class="form-group">
           <label class="form-label">Loading Date *</label>
-          <input type="date" name="loading_date" class="form-input" required
-                 value="{{ order.loading_date_fmt or '' }}">
+          <div class="calendar-field" data-calendar-root>
+            <input type="hidden" name="loading_date" value="{{ order.loading_date_fmt or '' }}" data-calendar-value>
+            <div class="calendar-field__control">
+              <input type="text" class="form-input calendar-field__display" placeholder="dd/mm/yyyy" value="" readonly required data-calendar-display aria-haspopup="dialog" aria-expanded="false">
+              <button type="button" class="calendar-field__toggle" data-calendar-toggle aria-label="Choose loading date">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" style="width:18px;height:18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0V10.5A2.25 2.25 0 015.25 8.25h13.5A2.25 2.25 0 0121 10.5v8.25"/></svg>
+              </button>
+            </div>
+            <div class="calendar-popover" data-calendar-popover hidden></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Delivery Terms *</label>
@@ -152,6 +172,8 @@
 {% block scripts %}
 <script>
   (function() {
+    window.initDoCalendarPickers?.();
+
     const billToSelect = document.getElementById('billToSelect');
     const marksInput = document.getElementById('marksNumbers');
 

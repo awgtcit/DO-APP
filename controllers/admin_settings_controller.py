@@ -23,6 +23,8 @@ from rules.admin_settings_rules import (
     validate_workflow_transition,
 )
 from sdk import auth_client
+from repos.delivery_order_repo import get_order_by_id, get_order_items
+from services.do_email_service import send_do_status_email
 
 logger = logging.getLogger(__name__)
 
@@ -560,6 +562,93 @@ def email_config_workflow_preview():
     preview_subject = email_admin_service.render_template_text(subject_template, sample_context)
     preview_body = email_admin_service.render_template_text(body_template, sample_context)
     return jsonify({"subject": preview_subject, "body": preview_body})
+
+
+@admin_settings_bp.route("/email-config/workflow/test-send", methods=["POST"])
+@login_required
+@role_required("admin", "it_admin")
+def email_config_workflow_test_send():
+    module_key = (request.form.get("module_key") or "delivery_orders").strip()
+    status_key = (request.form.get("status_key") or "").strip().upper()
+    order_id = request.form.get("order_id", type=int)
+
+    if module_key != "delivery_orders":
+        flash("Workflow test send currently supports Delivery Orders only.", "warning")
+        return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+    if not status_key:
+        flash("Please select a workflow status before sending a test email.", "danger")
+        return redirect(url_for("admin.email_config", module=module_key))
+
+    if not order_id:
+        flash("Please provide a valid Delivery Order ID.", "danger")
+        return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+    order = get_order_by_id(order_id)
+    if not order:
+        flash(f"Delivery Order with ID {order_id} was not found.", "danger")
+        return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+    po_number = (order.get("PO_Number") or "").strip()
+    if not po_number:
+        flash("Selected Delivery Order has no PO number and cannot be used for email testing.", "danger")
+        return redirect(url_for("admin.email_config", module=module_key, status=status_key))
+
+    order["line_items"] = get_order_items(po_number)
+
+    cc_emails = []
+    creator_email = (order.get("creator_email") or "").strip()
+    if creator_email:
+        cc_emails.append(creator_email)
+    actor_email = (session.get("email") or "").strip()
+    if actor_email:
+        cc_emails.append(actor_email)
+
+    diagnostics: dict = {}
+    ok = send_do_status_email(
+        order=order,
+        new_status=status_key,
+        creator_first_name=order.get("creator_first"),
+        extra_cc=cc_emails,
+        run_async=False,
+        diagnostics=diagnostics,
+    )
+
+    if ok:
+        attachment_msg = "No attachment expected for this status."
+        if diagnostics.get("attachment_expected"):
+            if diagnostics.get("attachment_added"):
+                attachment_msg = "PDF attachment generated and included."
+            else:
+                attachment_msg = "Attachment expected, but PDF could not be generated."
+
+        source_msg = (
+            "workflow config"
+            if diagnostics.get("workflow_config_used")
+            else "no workflow config"
+        )
+
+        flash(
+            (
+                f"Workflow test email sent for DO {po_number} ({status_key}). "
+                f"Source={source_msg}. "
+                f"TO={len(diagnostics.get('to') or [])}, "
+                f"CC={len(diagnostics.get('cc') or [])}, "
+                f"BCC={len(diagnostics.get('bcc') or [])}. "
+                f"{attachment_msg}"
+            ),
+            "success",
+        )
+    else:
+        flash(
+            (
+                f"Workflow test email failed for DO {po_number} ({status_key}). "
+                f"Reason: {diagnostics.get('error') or 'Please check SMTP and logs.'}"
+            ),
+            "danger",
+        )
+
+    return redirect(url_for("admin.email_config", module=module_key, status=status_key))
 
 
 # ═══════════════════════════════════════════════════════════════

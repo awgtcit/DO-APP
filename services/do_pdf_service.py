@@ -16,8 +16,8 @@ from xhtml2pdf import pisa
 logger = logging.getLogger(__name__)
 
 
-# Statuses that should include a PDF attachment (matches legacy PHP)
-_ATTACH_STATUSES = {"SUBMITTED", "PRICE AGREED", "CONFIRMED"}
+# Statuses that should include a PDF attachment (matches current business expectation)
+_ATTACH_STATUSES = {"SUBMITTED", "PRICE AGREED", "CONFIRMED", "DELIVERED"}
 
 
 def should_attach_pdf(status: str) -> bool:

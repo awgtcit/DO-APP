@@ -570,7 +570,7 @@ def change_order_status(
 
     # Send email notification on successful transition
     if ok:
-        # CC the order creator + the user performing the action
+        # Include creator + acting user in notification copy.
         from flask import session as flask_session
         cc_emails = []
         creator_email = order.get("creator_email", "")
